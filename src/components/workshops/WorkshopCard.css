@@ -1,0 +1,54 @@
+.workshop-card {
+  background-color: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+}
+
+.workshop-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.workshop-image {
+  height: 200px;
+  overflow: hidden;
+}
+
+.workshop-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: var(--transition);
+}
+
+.workshop-card:hover .workshop-image img {
+  transform: scale(1.05);
+}
+
+.workshop-info {
+  padding: 20px;
+}
+
+.workshop-date {
+  color: var(--secondary-color);
+  font-size: 0.9rem;
+  margin-bottom: 5px;
+}
+
+.workshop-title {
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+  color: var(--text-color);
+}
+
+.workshop-description {
+  margin: 10px 0;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.workshop-actions {
+  margin-top: 15px;
+}

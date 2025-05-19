@@ -1,0 +1,41 @@
+.workshop-registration {
+  padding: 80px 0;
+  background-color: var(--light-bg);
+}
+
+.registration-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 40px;
+  align-items: center;
+}
+
+.registration-text h2 {
+  color: var(--primary-color);
+  margin-bottom: 20px;
+}
+
+.registration-form form {
+  background-color: #fff;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 12px;
+  border-radius: 5px;
+  border: 1px solid var(--border-color);
+}
+
+@media (max-width: 768px) {
+  .registration-content {
+    grid-template-columns: 1fr;
+  }
+}

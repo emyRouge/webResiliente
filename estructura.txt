@@ -1,0 +1,6 @@
+Listado de rutas de carpetas para el volumen OS
+El número de serie del volumen es 368C-E9D9
+C:\USERS\EMILI\DESKTOP\ESTADIAS\WEBRESILIENTE\-A
+Ruta de acceso no válida: \USERS\EMILI\DESKTOP\ESTADIAS\WEBRESILIENTE\-A
+No existe ninguna subcarpeta 
+

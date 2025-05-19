@@ -1,0 +1,18 @@
+.featured-products,
+.upcoming-workshops {
+  padding: 80px 0;
+}
+
+.latest-posts {
+  padding: 80px 0;
+  background-color: var(--light-bg);
+}
+
+.products-preview,
+.posts-preview,
+.workshops-preview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 30px;
+  margin-bottom: 40px;
+}

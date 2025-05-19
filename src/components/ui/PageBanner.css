@@ -1,0 +1,12 @@
+.page-banner {
+  background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url("https://placehold.co/1920x400") no-repeat
+    center center / cover;
+  color: var(--light-text);
+  padding: 80px 0;
+  text-align: center;
+}
+
+.page-banner h1 {
+  font-size: 2.5rem;
+  margin-bottom: 15px;
+}
