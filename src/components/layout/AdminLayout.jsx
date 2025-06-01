@@ -1,3 +1,4 @@
+import React from "react"
 import { Link, Outlet, useLocation } from "react-router-dom"
 import AlertContainer from "../admin/common/AlertContainer"
 
@@ -19,12 +20,12 @@ const AdminLayout = () => {
 
         <ul className="sidebar-menu">
           <li>
-            <Link to="/admin" className={isActive("/admin") && !isActive("/admin/") ? "active" : ""}>
+            <Link to="/admin" className={isActive("/admin") && !location.pathname.includes("/admin/") ? "active" : ""}>
               <i className="fas fa-tachometer-alt"></i> Dashboard
             </Link>
           </li>
 
-          <div className="sidebar-category">Cafetería</div>
+          <div className="sidebar-category">CAFETERÍA</div>
           <li>
             <Link to="/admin/productos" className={isActive("/admin/productos") ? "active" : ""}>
               <i className="fas fa-mug-hot"></i> Productos
@@ -35,20 +36,16 @@ const AdminLayout = () => {
               <i className="fas fa-sign-language"></i> Señas
             </Link>
           </li>
-          <li>
-            <Link to="/admin/indicaciones" className={isActive("/admin/indicaciones") ? "active" : ""}>
-              <i className="fas fa-hands-helping"></i> Indicaciones
-            </Link>
-          </li>
+         
 
-          <div className="sidebar-category">Tienda</div>
+          <div className="sidebar-category">TIENDA</div>
           <li>
             <Link to="/admin/productos-tienda" className={isActive("/admin/productos-tienda") ? "active" : ""}>
               <i className="fas fa-shopping-bag"></i> Productos Tienda
             </Link>
           </li>
 
-          <div className="sidebar-category">Personal</div>
+          <div className="sidebar-category">PERSONAL</div>
           <li>
             <Link to="/admin/usuarios" className={isActive("/admin/usuarios") ? "active" : ""}>
               <i className="fas fa-users"></i> Usuarios
@@ -70,7 +67,7 @@ const AdminLayout = () => {
             </Link>
           </li>
 
-          <div className="sidebar-category">Contenido</div>
+          <div className="sidebar-category">CONTENIDO</div>
           <li>
             <Link to="/admin/publicaciones" className={isActive("/admin/publicaciones") ? "active" : ""}>
               <i className="fas fa-newspaper"></i> Publicaciones
@@ -82,7 +79,7 @@ const AdminLayout = () => {
             </Link>
           </li>
 
-          <div className="sidebar-category">Sistema</div>
+          <div className="sidebar-category">SISTEMA</div>
           <li>
             <Link to="/" className={isActive("/") ? "active" : ""}>
               <i className="fas fa-store"></i> Ver Tienda

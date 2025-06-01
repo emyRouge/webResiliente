@@ -1,233 +1,199 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { showAlert } from "../common/AlertContainer"
+import { useState, useEffect } from "react"
+import { useApi } from "../../../context/ApiContext"
+import AlertContainer from "../common/AlertContainer"
 import DeleteConfirmationModal from "../common/DeleteConfirmationModal"
+import FormModal from "../common/FormModal"
 import CandidatoForm from "./CandidatoForm"
 
 const CandidatosPage = () => {
   const [candidatos, setCandidatos] = useState([])
-  const [loading, setLoading] = useState(true)
   const [selectedCandidato, setSelectedCandidato] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [viewMode, setViewMode] = useState(false) // true = view only, false = edit
+  const [alerts, setAlerts] = useState([])
+  const [loading, setLoading] = useState(false)
+  const { getCandidatos, deleteCandidato } = useApi()
 
   useEffect(() => {
-    fetchCandidatos()
+    loadCandidatos()
   }, [])
 
-  const fetchCandidatos = async () => {
+  const loadCandidatos = async () => {
     setLoading(true)
     try {
-      const response = await fetch("http://localhost:8080/candidatos")
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`)
+      const response = await getCandidatos()
+      if (response?.success) {
+        setCandidatos(response.data || [])
+      } else {
+        addAlert(response?.message || "Error al cargar los candidatos.", "danger")
       }
-
-      const data = await response.json()
-      setCandidatos(data.datos || [])
     } catch (error) {
-      console.error("Error al obtener candidatos:", error)
-      showAlert(`Error al cargar candidatos: ${error.message}`, "danger")
+      addAlert("Error al conectar con el servidor", "danger")
     } finally {
       setLoading(false)
     }
   }
 
-  const handleViewCandidato = (candidato) => {
+  const handleOpenModal = (candidato = null) => {
     setSelectedCandidato(candidato)
-    setViewMode(true)
     setIsModalOpen(true)
   }
 
-  const handleEditCandidato = (candidato) => {
-    setSelectedCandidato(candidato)
-    setViewMode(false)
-    setIsModalOpen(true)
-  }
-
-  const handleNewCandidato = () => {
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
     setSelectedCandidato(null)
-    setViewMode(false)
-    setIsModalOpen(true)
   }
 
-  const handleDeleteClick = (candidato) => {
+  const handleDelete = (candidato) => {
     setSelectedCandidato(candidato)
     setIsDeleteModalOpen(true)
   }
 
-  const handleDeleteCandidato = async () => {
-    try {
-      const response = await fetch(`http://localhost:8080/candidatos/${selectedCandidato.id}`, {
-        method: "DELETE",
-      })
-
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`)
+  const confirmDelete = async () => {
+    if (selectedCandidato) {
+      const response = await deleteCandidato(selectedCandidato.id)
+      setIsDeleteModalOpen(false)
+      if (response?.success) {
+        addAlert("Candidato eliminado correctamente.", "success")
+        loadCandidatos()
+      } else {
+        addAlert(response?.message || "Error al eliminar el candidato.", "danger")
       }
-
-      // Update the list
-      fetchCandidatos()
-      showAlert("Candidato eliminado exitosamente", "success")
-    } catch (error) {
-      console.error("Error al eliminar candidato:", error)
-      showAlert(`Error al eliminar candidato: ${error.message}`, "danger")
-      throw error
     }
   }
 
-  const handleSaveCandidato = async (candidatoData) => {
-    try {
-      let url = "http://localhost:8080/candidatos"
-      let method = "POST"
+  const handleCloseDeleteModal = () => {
+    setIsDeleteModalOpen(false)
+    setSelectedCandidato(null)
+  }
 
-      if (selectedCandidato?.id) {
-        url += `/${selectedCandidato.id}`
-        method = "PUT"
-      }
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(candidatoData),
-      })
-
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`)
-      }
-
-      // Update the list
-      fetchCandidatos()
-
-      // Show success message
-      const message = selectedCandidato?.id ? "Candidato actualizado exitosamente" : "Candidato creado exitosamente"
-      showAlert(message, "success")
-
-      // Close the modal
-      setIsModalOpen(false)
-    } catch (error) {
-      console.error("Error al guardar candidato:", error)
-      showAlert(`Error al guardar candidato: ${error.message}`, "danger")
-      throw error
-    }
+  const addAlert = (message, type) => {
+    const id = Date.now()
+    setAlerts((prevAlerts) => [...prevAlerts, { id, message, type }])
+    setTimeout(() => {
+      setAlerts((prevAlerts) => prevAlerts.filter((alert) => alert.id !== id))
+    }, 5000)
   }
 
   return (
-    <>
+    <div className="admin-page">
       <div className="page-header">
-        <h1 className="page-title">Gestión de Candidatos</h1>
-        <button className="btn btn-primary" onClick={handleNewCandidato}>
-          <i className="fas fa-plus btn-icon"></i> Nuevo Candidato
+        <h1 className="page-title">
+          <i className="fas fa-user-tie mr-3"></i>
+          Candidatos
+        </h1>
+        <button onClick={() => handleOpenModal()} className="btn btn-primary">
+          <i className="fas fa-plus"></i>
+          Nuevo Candidato
         </button>
       </div>
 
+      <AlertContainer alerts={alerts} />
+
       <div className="card">
         <div className="card-header">
-          <h2 className="card-title">Lista de Candidatos</h2>
-          <button className="btn btn-primary" onClick={fetchCandidatos}>
-            <i className="fas fa-sync-alt btn-icon"></i> Actualizar
-          </button>
+          <h2 className="card-title">
+            <i className="fas fa-list mr-2"></i>
+            Lista de Candidatos ({candidatos.length})
+          </h2>
         </div>
-        <div className="card-body">
-          <div className="table-responsive">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Email</th>
-                  <th>Teléfono</th>
-                  <th>Fecha de Envío</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
+        <div className="card-body p-0">
+          {loading ? (
+            <div className="loading-container">
+              <div className="loading-spinner"></div>
+              <p className="loading-text">Cargando candidatos...</p>
+            </div>
+          ) : candidatos.length === 0 ? (
+            <div className="empty-state">
+              <i className="fas fa-user-tie"></i>
+              <h3>No hay candidatos disponibles</h3>
+              <p>Comienza agregando tu primer candidato</p>
+              <button onClick={() => handleOpenModal()} className="btn btn-primary">
+                <i className="fas fa-plus mr-2"></i>
+                Crear Primer Candidato
+              </button>
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="table">
+                <thead>
                   <tr>
-                    <td colSpan="6" className="text-center">
-                      <div style={{ padding: "2rem", textAlign: "center" }}>
-                        <i className="fas fa-spinner fa-spin fa-2x"></i>
-                        <p>Cargando candidatos...</p>
-                      </div>
-                    </td>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Email</th>
+                    <th>Teléfono</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
                   </tr>
-                ) : candidatos.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" className="text-center">
-                      <div style={{ padding: "2rem", textAlign: "center" }}>
-                        <i className="fas fa-user-plus fa-2x" style={{ color: "#ccc", marginBottom: "1rem" }}></i>
-                        <p>No hay candidatos disponibles</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  candidatos.map((candidato) => (
+                </thead>
+                <tbody>
+                  {candidatos.map((candidato) => (
                     <tr key={candidato.id}>
+                      <td>{candidato.id}</td>
                       <td>{candidato.nombre}</td>
                       <td>{candidato.email}</td>
-                      <td>{candidato.telefono || "N/A"}</td>
+                      <td>{candidato.telefono}</td>
                       <td>
-                        {candidato.fechaEnvio
-                          ? new Date(candidato.fechaEnvio).toLocaleDateString("es-ES", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                          : "N/A"}
-                      </td>
-                      <td>
-                        {candidato.status ? (
-                          <span className="badge badge-success">Activo</span>
-                        ) : (
-                          <span className="badge badge-danger">Inactivo</span>
-                        )}
+                        <span className={`badge ${candidato.status ? "badge-success" : "badge-danger"}`}>
+                          {candidato.status ? "Activo" : "Inactivo"}
+                        </span>
                       </td>
                       <td>
                         <div className="table-actions">
-                          <button className="btn btn-sm btn-info" onClick={() => handleViewCandidato(candidato)}>
-                            <i className="fas fa-eye"></i>
-                          </button>
-                          <button className="btn btn-sm btn-warning" onClick={() => handleEditCandidato(candidato)}>
+                          <button
+                            onClick={() => handleOpenModal(candidato)}
+                            className="action-btn edit"
+                            title="Editar candidato"
+                          >
                             <i className="fas fa-edit"></i>
                           </button>
-                          <button className="btn btn-sm btn-danger" onClick={() => handleDeleteClick(candidato)}>
+                          <button
+                            onClick={() => handleDelete(candidato)}
+                            className="action-btn delete"
+                            title="Eliminar candidato"
+                          >
                             <i className="fas fa-trash-alt"></i>
                           </button>
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Form Modal */}
-      {isModalOpen && (
+      <FormModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        title={selectedCandidato ? "Editar Candidato" : "Nuevo Candidato"}
+      >
         <CandidatoForm
           candidato={selectedCandidato}
-          viewOnly={viewMode}
-          onSave={handleSaveCandidato}
-          onClose={() => setIsModalOpen(false)}
+          onSave={(data) => {
+            if (data) {
+              addAlert("Candidato guardado correctamente.", "success")
+            }
+            handleCloseModal()
+            loadCandidatos()
+          }}
+          onCancel={handleCloseModal}
         />
-      )}
+      </FormModal>
 
-      {/* Delete Confirmation Modal */}
       <DeleteConfirmationModal
         isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={handleDeleteCandidato}
-        message="¿Estás seguro de que deseas eliminar este candidato? Esta acción no se puede deshacer."
+        onClose={handleCloseDeleteModal}
+        onConfirm={confirmDelete}
+        title="Confirmar Eliminación"
+        message={`¿Estás seguro de que deseas eliminar el candidato "${selectedCandidato?.nombre}"? Esta acción no se puede deshacer.`}
+        itemName={selectedCandidato?.nombre}
       />
-    </>
+    </div>
   )
 }
 

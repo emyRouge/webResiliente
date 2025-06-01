@@ -1,141 +1,68 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useApi } from "../../../context/ApiContext"
 import AlertContainer from "../common/AlertContainer"
 import DeleteConfirmationModal from "../common/DeleteConfirmationModal"
 import FormModal from "../common/FormModal"
 import ProductoTiendaForm from "./ProductoTiendaForm"
 
 const ProductosTiendaPage = () => {
-  const [productos, setProductos] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [selectedProducto, setSelectedProducto] = useState(null)
+  const [productosTienda, setProductosTienda] = useState([])
+  const [selectedProductoTienda, setSelectedProductoTienda] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [alerts, setAlerts] = useState([])
-  const [modalMode, setModalMode] = useState("create") // "create", "edit", "view"
-  const [searchTerm, setSearchTerm] = useState("")
-  const [categoriaFilter, setCategoriaFilter] = useState("")
+  const { getProductosTienda, deleteProductoTienda } = useApi()
 
   useEffect(() => {
-    fetchProductos()
+    loadProductosTienda()
   }, [])
 
-  const fetchProductos = async (search = "", categoria = "") => {
-    setLoading(true)
+  const loadProductosTienda = async () => {
     try {
-      let url = "http://localhost:8080/productos-tienda"
-
-      if (search) {
-        url = `http://localhost:8080/productos-tienda/buscar?nombre=${encodeURIComponent(search)}`
-      } else if (categoria) {
-        url = `http://localhost:8080/productos-tienda/categoria/${encodeURIComponent(categoria)}`
+      const response = await getProductosTienda()
+      if (response?.success) {
+        setProductosTienda(response.data)
+      } else {
+        addAlert(response?.message || "Error al cargar los productos de la tienda.", "danger")
       }
-
-      const response = await fetch(url)
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`)
-      }
-      const data = await response.json()
-      setProductos(data.datos || [])
     } catch (error) {
-      console.error("Error fetching productos:", error)
-      addAlert(`Error al cargar productos: ${error.message}`, "danger")
-    } finally {
-      setLoading(false)
+      addAlert("Error al conectar con el servidor", "danger")
     }
   }
 
-  const handleCreateProducto = () => {
-    setSelectedProducto(null)
-    setModalMode("create")
+  const handleOpenModal = (productoTienda = null) => {
+    setSelectedProductoTienda(productoTienda)
     setIsModalOpen(true)
   }
 
-  const handleEditProducto = (producto) => {
-    setSelectedProducto(producto)
-    setModalMode("edit")
-    setIsModalOpen(true)
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setSelectedProductoTienda(null)
   }
 
-  const handleViewProducto = (producto) => {
-    setSelectedProducto(producto)
-    setModalMode("view")
-    setIsModalOpen(true)
-  }
-
-  const handleDeleteProducto = (producto) => {
-    setSelectedProducto(producto)
+  const handleDelete = (productoTienda) => {
+    setSelectedProductoTienda(productoTienda)
     setIsDeleteModalOpen(true)
   }
 
   const confirmDelete = async () => {
-    try {
-      const response = await fetch(`http://localhost:8080/productos-tienda/${selectedProducto.id}`, {
-        method: "DELETE",
-      })
-
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`)
-      }
-
-      setProductos(productos.filter((p) => p.id !== selectedProducto.id))
-      addAlert("Producto eliminado exitosamente", "success")
-    } catch (error) {
-      console.error("Error deleting producto:", error)
-      addAlert(`Error al eliminar producto: ${error.message}`, "danger")
-    } finally {
+    if (selectedProductoTienda) {
+      const response = await deleteProductoTienda(selectedProductoTienda.id)
       setIsDeleteModalOpen(false)
+      if (response?.success) {
+        addAlert("Producto de la tienda eliminado correctamente.", "success")
+        loadProductosTienda()
+      } else {
+        addAlert(response?.message || "Error al eliminar el producto de la tienda.", "danger")
+      }
     }
   }
 
-  const handleSaveProducto = async (productoData) => {
-    try {
-      let url = "http://localhost:8080/productos-tienda"
-      let method = "POST"
-
-      if (modalMode === "edit") {
-        url += `/${selectedProducto.id}`
-        method = "PUT"
-      }
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(productoData),
-      })
-
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`)
-      }
-
-      fetchProductos(searchTerm, categoriaFilter)
-      setIsModalOpen(false)
-      addAlert(modalMode === "create" ? "Producto creado exitosamente" : "Producto actualizado exitosamente", "success")
-    } catch (error) {
-      console.error("Error saving producto:", error)
-      addAlert(`Error al guardar producto: ${error.message}`, "danger")
-    }
-  }
-
-  const handleSearch = () => {
-    setCategoriaFilter("")
-    fetchProductos(searchTerm, "")
-  }
-
-  const handleCategoriaChange = (e) => {
-    const categoria = e.target.value
-    setCategoriaFilter(categoria)
-    setSearchTerm("")
-    fetchProductos("", categoria)
-  }
-
-  const handleRefresh = () => {
-    setSearchTerm("")
-    setCategoriaFilter("")
-    fetchProductos()
+  const handleCloseDeleteModal = () => {
+    setIsDeleteModalOpen(false)
+    setSelectedProductoTienda(null)
   }
 
   const addAlert = (message, type) => {
@@ -146,158 +73,92 @@ const ProductosTiendaPage = () => {
     }, 5000)
   }
 
-  const formatPrice = (price, discount = 0) => {
-    const finalPrice = price - (price * discount) / 100
-    return `$${Number.parseFloat(finalPrice).toFixed(2)}`
-  }
-
   return (
-    <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Gestión de Productos Tienda</h1>
-        <button onClick={handleCreateProducto} className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
-          <i className="fas fa-plus mr-2"></i> Nuevo Producto
+    <div className="admin-page">
+      <div className="page-header">
+        <h1 className="page-title">
+          <i className="fas fa-shopping-bag mr-3"></i>
+          Productos Tienda
+        </h1>
+        <button onClick={() => handleOpenModal()} className="btn btn-primary">
+          <i className="fas fa-plus"></i>
+          Nuevo Producto Tienda
         </button>
       </div>
 
       <AlertContainer alerts={alerts} />
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-xl font-semibold">Lista de Productos</h2>
-          <div className="flex items-center space-x-2">
-            <div className="flex">
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar productos..."
-                className="rounded-l border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-              />
-              <button onClick={handleSearch} className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-r">
-                <i className="fas fa-search"></i>
+      <div className="card">
+        <div className="card-header">
+          <h2 className="card-title">
+            <i className="fas fa-list mr-2"></i>
+            Lista de Productos Tienda ({productosTienda.length})
+          </h2>
+        </div>
+        <div className="card-body p-0">
+          {productosTienda.length === 0 ? (
+            <div className="empty-state">
+              <i className="fas fa-box-open"></i>
+              <h3>No hay productos de tienda disponibles</h3>
+              <p>Comienza agregando tu primer producto de tienda</p>
+              <button onClick={() => handleOpenModal()} className="btn btn-primary">
+                <i className="fas fa-plus mr-2"></i>
+                Crear Primer Producto de Tienda
               </button>
             </div>
-            <select
-              value={categoriaFilter}
-              onChange={handleCategoriaChange}
-              className="rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-            >
-              <option value="">Todas las categorías</option>
-              <option value="ropa">Ropa</option>
-              <option value="accesorios">Accesorios</option>
-              <option value="decoracion">Decoración</option>
-              <option value="libros">Libros</option>
-              <option value="otros">Otros</option>
-            </select>
-            <button onClick={handleRefresh} className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded">
-              <i className="fas fa-sync-alt mr-2"></i> Actualizar
-            </button>
-          </div>
-        </div>
-        <div className="p-4">
-          {loading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-              <p className="mt-4">Cargando productos...</p>
-            </div>
-          ) : productos.length === 0 ? (
-            <div className="text-center py-8">
-              <i className="fas fa-shopping-bag text-4xl text-gray-300 mb-4"></i>
-              <p>No hay productos disponibles</p>
-            </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+            <div className="table-responsive">
+              <table className="table">
+                <thead>
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Imagen
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Nombre
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Categoría
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Precio
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Estado
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Acciones
-                    </th>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Precio</th>
+                    <th>Categoría</th>
+                    <th>Imagen</th>
+                    <th>Descuento</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {productos.map((producto) => (
-                    <tr key={producto.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {producto.imagen ? (
+                <tbody>
+                  {productosTienda.map((productoTienda) => (
+                    <tr key={productoTienda.id}>
+                      <td>{productoTienda.id}</td>
+                      <td>{productoTienda.nombre}</td>
+                      <td>{productoTienda.descripcion}</td>
+                      <td>${productoTienda.precio}</td>
+                      <td>{productoTienda.categoria}</td>
+                      <td>
+                        {productoTienda.imagen && (
                           <img
-                            src={
-                              producto.imagen.startsWith("http")
-                                ? producto.imagen
-                                : `data:image/jpeg;base64,${producto.imagen}`
-                            }
-                            alt={producto.nombre}
-                            className="h-12 w-12 object-cover rounded"
+                            src={productoTienda.imagen || "/placeholder.svg"}
+                            alt={productoTienda.nombre}
+                            className="image-preview"
+                            style={{ width: "50px", height: "50px", objectFit: "cover" }}
                           />
-                        ) : (
-                          <div className="h-12 w-12 bg-gray-200 rounded flex items-center justify-center">
-                            <i className="fas fa-image text-gray-400"></i>
-                          </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{producto.nombre}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{producto.categoria || "Sin categoría"}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {producto.descuento && producto.descuento > 0 ? (
-                          <div>
-                            <span className="font-bold text-green-600">
-                              {formatPrice(producto.precio, producto.descuento)}
-                            </span>
-                            <br />
-                            <span className="text-sm line-through text-gray-500">
-                              ${Number.parseFloat(producto.precio).toFixed(2)}
-                            </span>
-                            <span className="text-sm text-red-500 ml-1">(-{producto.descuento}%)</span>
-                          </div>
-                        ) : (
-                          <span className="font-bold">${Number.parseFloat(producto.precio).toFixed(2)}</span>
-                        )}
+                      <td>{productoTienda.descuento}%</td>
+                      <td>
+                        <span className={`badge ${productoTienda.status ? "badge-success" : "badge-danger"}`}>
+                          {productoTienda.status ? "Activo" : "Inactivo"}
+                        </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {producto.status ? (
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                            Activo
-                          </span>
-                        ) : (
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                            Inactivo
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex space-x-2">
+                      <td>
+                        <div className="table-actions">
                           <button
-                            onClick={() => handleViewProducto(producto)}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            <i className="fas fa-eye"></i>
-                          </button>
-                          <button
-                            onClick={() => handleEditProducto(producto)}
-                            className="text-yellow-600 hover:text-yellow-900"
+                            onClick={() => handleOpenModal(productoTienda)}
+                            className="action-btn edit"
+                            title="Editar producto"
                           >
                             <i className="fas fa-edit"></i>
                           </button>
                           <button
-                            onClick={() => handleDeleteProducto(producto)}
-                            className="text-red-600 hover:text-red-900"
+                            onClick={() => handleDelete(productoTienda)}
+                            className="action-btn delete"
+                            title="Eliminar producto"
                           >
                             <i className="fas fa-trash-alt"></i>
                           </button>
@@ -314,18 +175,26 @@ const ProductosTiendaPage = () => {
 
       <FormModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={modalMode === "create" ? "Nuevo Producto" : modalMode === "edit" ? "Editar Producto" : "Ver Producto"}
+        onClose={handleCloseModal}
+        title={selectedProductoTienda ? "Editar Producto Tienda" : "Nuevo Producto Tienda"}
       >
-        <ProductoTiendaForm producto={selectedProducto} onSave={handleSaveProducto} readOnly={modalMode === "view"} />
+        <ProductoTiendaForm
+          productoTienda={selectedProductoTienda}
+          onSave={(data) => {
+            handleCloseModal()
+            loadProductosTienda()
+          }}
+          onCancel={handleCloseModal}
+        />
       </FormModal>
 
       <DeleteConfirmationModal
         isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
+        onClose={handleCloseDeleteModal}
         onConfirm={confirmDelete}
         title="Confirmar Eliminación"
-        message="¿Estás seguro de que deseas eliminar este producto? Esta acción no se puede deshacer."
+        message={`¿Estás seguro de que deseas eliminar el producto "${selectedProductoTienda?.nombre}"? Esta acción no se puede deshacer.`}
+        itemName={selectedProductoTienda?.nombre}
       />
     </div>
   )

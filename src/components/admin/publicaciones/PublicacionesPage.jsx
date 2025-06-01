@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useApi } from "../../../context/ApiContext"
 import AlertContainer from "../common/AlertContainer"
 import DeleteConfirmationModal from "../common/DeleteConfirmationModal"
 import FormModal from "../common/FormModal"
@@ -8,109 +9,64 @@ import PublicacionForm from "./PublicacionForm"
 
 const PublicacionesPage = () => {
   const [publicaciones, setPublicaciones] = useState([])
-  const [loading, setLoading] = useState(false)
   const [selectedPublicacion, setSelectedPublicacion] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [alerts, setAlerts] = useState([])
-  const [modalMode, setModalMode] = useState("create") // "create", "edit", "view"
+  const [loading, setLoading] = useState(false)
+  const { getPosts, deletePost } = useApi()
 
   useEffect(() => {
-    fetchPublicaciones()
+    loadPublicaciones()
   }, [])
 
-  const fetchPublicaciones = async () => {
+  const loadPublicaciones = async () => {
     setLoading(true)
     try {
-      const response = await fetch("http://localhost:8080/publicaciones")
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`)
+      const response = await getPosts()
+      if (response?.success) {
+        setPublicaciones(response.data || [])
+      } else {
+        addAlert(response?.message || "Error al cargar las publicaciones.", "danger")
       }
-      const data = await response.json()
-      setPublicaciones(data.datos || [])
     } catch (error) {
-      console.error("Error fetching publicaciones:", error)
-      addAlert(`Error al cargar publicaciones: ${error.message}`, "danger")
+      addAlert("Error al conectar con el servidor", "danger")
     } finally {
       setLoading(false)
     }
   }
 
-  const handleCreatePublicacion = () => {
+  const handleOpenModal = (publicacion = null) => {
+    setSelectedPublicacion(publicacion)
+    setIsModalOpen(true)
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
     setSelectedPublicacion(null)
-    setModalMode("create")
-    setIsModalOpen(true)
   }
 
-  const handleEditPublicacion = (publicacion) => {
-    setSelectedPublicacion(publicacion)
-    setModalMode("edit")
-    setIsModalOpen(true)
-  }
-
-  const handleViewPublicacion = (publicacion) => {
-    setSelectedPublicacion(publicacion)
-    setModalMode("view")
-    setIsModalOpen(true)
-  }
-
-  const handleDeletePublicacion = (publicacion) => {
+  const handleDelete = (publicacion) => {
     setSelectedPublicacion(publicacion)
     setIsDeleteModalOpen(true)
   }
 
   const confirmDelete = async () => {
-    try {
-      const response = await fetch(`http://localhost:8080/publicaciones/${selectedPublicacion.id}`, {
-        method: "DELETE",
-      })
-
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`)
-      }
-
-      setPublicaciones(publicaciones.filter((p) => p.id !== selectedPublicacion.id))
-      addAlert("Publicación eliminada exitosamente", "success")
-    } catch (error) {
-      console.error("Error deleting publicacion:", error)
-      addAlert(`Error al eliminar publicación: ${error.message}`, "danger")
-    } finally {
+    if (selectedPublicacion) {
+      const response = await deletePost(selectedPublicacion.id)
       setIsDeleteModalOpen(false)
+      if (response?.success) {
+        addAlert("Publicación eliminada correctamente.", "success")
+        loadPublicaciones()
+      } else {
+        addAlert(response?.message || "Error al eliminar la publicación.", "danger")
+      }
     }
   }
 
-  const handleSavePublicacion = async (publicacionData) => {
-    try {
-      let url = "http://localhost:8080/publicaciones"
-      let method = "POST"
-
-      if (modalMode === "edit") {
-        url += `/${selectedPublicacion.id}`
-        method = "PUT"
-      }
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(publicacionData),
-      })
-
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`)
-      }
-
-      fetchPublicaciones()
-      setIsModalOpen(false)
-      addAlert(
-        modalMode === "create" ? "Publicación creada exitosamente" : "Publicación actualizada exitosamente",
-        "success",
-      )
-    } catch (error) {
-      console.error("Error saving publicacion:", error)
-      addAlert(`Error al guardar publicación: ${error.message}`, "danger")
-    }
+  const handleCloseDeleteModal = () => {
+    setIsDeleteModalOpen(false)
+    setSelectedPublicacion(null)
   }
 
   const addAlert = (message, type) => {
@@ -121,128 +77,97 @@ const PublicacionesPage = () => {
     }, 5000)
   }
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A"
-    const date = new Date(dateString)
-    return date.toLocaleDateString("es-ES", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  }
-
   return (
-    <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Gestión de Publicaciones</h1>
-        <button
-          onClick={handleCreatePublicacion}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
-        >
-          <i className="fas fa-plus mr-2"></i> Nueva Publicación
+    <div className="admin-page">
+      <div className="page-header">
+        <h1 className="page-title">
+          <i className="fas fa-newspaper mr-3"></i>
+          Publicaciones
+        </h1>
+        <button onClick={() => handleOpenModal()} className="btn btn-primary">
+          <i className="fas fa-plus"></i>
+          Nueva Publicación
         </button>
       </div>
 
       <AlertContainer alerts={alerts} />
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-xl font-semibold">Lista de Publicaciones</h2>
-          <button onClick={fetchPublicaciones} className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded">
-            <i className="fas fa-sync-alt mr-2"></i> Actualizar
-          </button>
+      <div className="card">
+        <div className="card-header">
+          <h2 className="card-title">
+            <i className="fas fa-list mr-2"></i>
+            Lista de Publicaciones ({publicaciones.length})
+          </h2>
         </div>
-        <div className="p-4">
+        <div className="card-body p-0">
           {loading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-              <p className="mt-4">Cargando publicaciones...</p>
+            <div className="loading-container">
+              <div className="loading-spinner"></div>
+              <p className="loading-text">Cargando publicaciones...</p>
             </div>
           ) : publicaciones.length === 0 ? (
-            <div className="text-center py-8">
-              <i className="fas fa-newspaper text-4xl text-gray-300 mb-4"></i>
-              <p>No hay publicaciones disponibles</p>
+            <div className="empty-state">
+              <i className="fas fa-newspaper"></i>
+              <h3>No hay publicaciones disponibles</h3>
+              <p>Comienza agregando tu primera publicación</p>
+              <button onClick={() => handleOpenModal()} className="btn btn-primary">
+                <i className="fas fa-plus mr-2"></i>
+                Crear Primera Publicación
+              </button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+            <div className="table-responsive">
+              <table className="table">
+                <thead>
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Imagen
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Título
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Contenido
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Fecha
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Estado
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Acciones
-                    </th>
+                    <th>ID</th>
+                    <th>Imagen</th>
+                    <th>Título</th>
+                    <th>Contenido</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody>
                   {publicaciones.map((publicacion) => (
                     <tr key={publicacion.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td>{publicacion.id}</td>
+                      <td>
                         {publicacion.imagen ? (
                           <img
-                            src={
-                              publicacion.imagen.startsWith("http")
-                                ? publicacion.imagen
-                                : `data:image/jpeg;base64,${publicacion.imagen}`
-                            }
+                            src={publicacion.imagen || "/placeholder.svg"}
                             alt={publicacion.titulo}
-                            className="h-12 w-12 object-cover rounded"
+                            className="image-preview"
+                            style={{ width: "50px", height: "50px", objectFit: "cover" }}
                           />
                         ) : (
-                          <div className="h-12 w-12 bg-gray-200 rounded flex items-center justify-center">
-                            <i className="fas fa-image text-gray-400"></i>
+                          <div className="image-placeholder">
+                            <i className="fas fa-image"></i>
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{publicacion.titulo}</td>
-                      <td className="px-6 py-4">
-                        <div className="max-w-xs truncate">{publicacion.contenido}</div>
+                      <td>{publicacion.titulo}</td>
+                      <td>{publicacion.contenido?.substring(0, 100)}...</td>
+                      <td>{publicacion.fechaPublicacion}</td>
+                      <td>
+                        <span className={`badge ${publicacion.status ? "badge-success" : "badge-danger"}`}>
+                          {publicacion.status ? "Activo" : "Inactivo"}
+                        </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{formatDate(publicacion.fechaPublicacion)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {publicacion.status ? (
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                            Activo
-                          </span>
-                        ) : (
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                            Inactivo
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex space-x-2">
+                      <td>
+                        <div className="table-actions">
                           <button
-                            onClick={() => handleViewPublicacion(publicacion)}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            <i className="fas fa-eye"></i>
-                          </button>
-                          <button
-                            onClick={() => handleEditPublicacion(publicacion)}
-                            className="text-yellow-600 hover:text-yellow-900"
+                            onClick={() => handleOpenModal(publicacion)}
+                            className="action-btn edit"
+                            title="Editar publicación"
                           >
                             <i className="fas fa-edit"></i>
                           </button>
                           <button
-                            onClick={() => handleDeletePublicacion(publicacion)}
-                            className="text-red-600 hover:text-red-900"
+                            onClick={() => handleDelete(publicacion)}
+                            className="action-btn delete"
+                            title="Eliminar publicación"
                           >
                             <i className="fas fa-trash-alt"></i>
                           </button>
@@ -259,24 +184,27 @@ const PublicacionesPage = () => {
 
       <FormModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={
-          modalMode === "create" ? "Nueva Publicación" : modalMode === "edit" ? "Editar Publicación" : "Ver Publicación"
-        }
+        onClose={handleCloseModal}
+        title={selectedPublicacion ? "Editar Publicación" : "Nueva Publicación"}
+        size="lg"
       >
         <PublicacionForm
           publicacion={selectedPublicacion}
-          onSave={handleSavePublicacion}
-          readOnly={modalMode === "view"}
+          onSave={() => {
+            handleCloseModal()
+            loadPublicaciones()
+          }}
+          onCancel={handleCloseModal}
         />
       </FormModal>
 
       <DeleteConfirmationModal
         isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
+        onClose={handleCloseDeleteModal}
         onConfirm={confirmDelete}
         title="Confirmar Eliminación"
-        message="¿Estás seguro de que deseas eliminar esta publicación? Esta acción no se puede deshacer."
+        message={`¿Estás seguro de que deseas eliminar la publicación "${selectedPublicacion?.titulo}"? Esta acción no se puede deshacer.`}
+        itemName={selectedPublicacion?.titulo}
       />
     </div>
   )

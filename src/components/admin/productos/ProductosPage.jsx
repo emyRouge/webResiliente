@@ -1,22 +1,23 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useApi } from "../../../context/ApiContext"
 import AlertContainer from "../common/AlertContainer"
 import DeleteConfirmationModal from "../common/DeleteConfirmationModal"
 import ProductoForm from "./ProductoForm"
 import FormModal from "../common/FormModal"
 
 const ProductosPage = () => {
+  const { getProducts, createProduct, updateProduct, deleteProduct } = useApi()
   const [productos, setProductos] = useState([])
   const [loading, setLoading] = useState(false)
   const [selectedProducto, setSelectedProducto] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [alerts, setAlerts] = useState([])
-  const [modalMode, setModalMode] = useState("create") // "create", "edit", "view"
-
-  const navigate = useNavigate()
+  const [modalMode, setModalMode] = useState("create")
+  const [searchTerm, setSearchTerm] = useState("")
+  const [filterStatus, setFilterStatus] = useState("all")
 
   useEffect(() => {
     fetchProductos()
@@ -25,12 +26,12 @@ const ProductosPage = () => {
   const fetchProductos = async () => {
     setLoading(true)
     try {
-      const response = await fetch("http://localhost:8080/productos")
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`)
+      const result = await getProducts()
+      if (result.success) {
+        setProductos(result.data || [])
+      } else {
+        addAlert(result.message, "danger")
       }
-      const data = await response.json()
-      setProductos(data.datos || [])
     } catch (error) {
       console.error("Error fetching productos:", error)
       addAlert(`Error al cargar productos: ${error.message}`, "danger")
@@ -64,16 +65,13 @@ const ProductosPage = () => {
 
   const confirmDelete = async () => {
     try {
-      const response = await fetch(`http://localhost:8080/productos/${selectedProducto.id}`, {
-        method: "DELETE",
-      })
-
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`)
+      const result = await deleteProduct(selectedProducto.id)
+      if (result.success) {
+        setProductos(productos.filter((p) => p.id !== selectedProducto.id))
+        addAlert("Producto eliminado exitosamente", "success")
+      } else {
+        addAlert(result.message, "danger")
       }
-
-      setProductos(productos.filter((p) => p.id !== selectedProducto.id))
-      addAlert("Producto eliminado exitosamente", "success")
     } catch (error) {
       console.error("Error deleting producto:", error)
       addAlert(`Error al eliminar producto: ${error.message}`, "danger")
@@ -83,30 +81,29 @@ const ProductosPage = () => {
   }
 
   const handleSaveProducto = async (productoData) => {
-    try {
-      let url = "http://localhost:8080/productos"
-      let method = "POST"
-
-      if (modalMode === "edit") {
-        url += `/${selectedProducto.id}`
-        method = "PUT"
-      }
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(productoData),
-      })
-
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`)
-      }
-
-      fetchProductos()
+    if (!productoData) {
       setIsModalOpen(false)
-      addAlert(modalMode === "create" ? "Producto creado exitosamente" : "Producto actualizado exitosamente", "success")
+      return
+    }
+
+    try {
+      let result
+      if (modalMode === "create") {
+        result = await createProduct(productoData)
+      } else {
+        result = await updateProduct(selectedProducto.id, productoData)
+      }
+
+      if (result.success) {
+        fetchProductos()
+        setIsModalOpen(false)
+        addAlert(
+          modalMode === "create" ? "Producto creado exitosamente" : "Producto actualizado exitosamente",
+          "success",
+        )
+      } else {
+        addAlert(result.message, "danger")
+      }
     } catch (error) {
       console.error("Error saving producto:", error)
       addAlert(`Error al guardar producto: ${error.message}`, "danger")
@@ -125,67 +122,129 @@ const ProductosPage = () => {
     return `$${Number.parseFloat(price).toFixed(2)}`
   }
 
+  // Filtrar productos
+  const filteredProductos = productos.filter((producto) => {
+    const matchesSearch =
+      producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      producto.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (producto.categoria && producto.categoria.toLowerCase().includes(searchTerm.toLowerCase()))
+
+    const matchesStatus =
+      filterStatus === "all" ||
+      (filterStatus === "active" && producto.status) ||
+      (filterStatus === "inactive" && !producto.status)
+
+    return matchesSearch && matchesStatus
+  })
+
   return (
-    <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Gestión de Productos</h1>
-        <button onClick={handleCreateProducto} className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
-          <i className="fas fa-plus mr-2"></i> Nuevo Producto
+    <div className="admin-page">
+      {/* Page Header */}
+      <div className="page-header">
+        <h1 className="page-title">
+          <i className="fas fa-mug-hot mr-3"></i>
+          Gestión de Productos
+        </h1>
+        <button onClick={handleCreateProducto} className="btn btn-primary">
+          <i className="fas fa-plus"></i>
+          Nuevo Producto
         </button>
       </div>
 
       <AlertContainer alerts={alerts} />
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-xl font-semibold">Lista de Productos</h2>
-          <button onClick={fetchProductos} className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded">
-            <i className="fas fa-sync-alt mr-2"></i> Actualizar
-          </button>
-        </div>
-        <div className="p-4">
-          {loading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-              <p className="mt-4">Cargando productos...</p>
+      {/* Filters */}
+      <div className="card mb-4">
+        <div className="card-body">
+          <div className="row">
+            <div className="col-md-6">
+              <div className="form-group">
+                <label className="form-label">Buscar productos</label>
+                <div className="input-group">
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Buscar por nombre, código o categoría..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  <button className="btn btn-secondary">
+                    <i className="fas fa-search"></i>
+                  </button>
+                </div>
+              </div>
             </div>
-          ) : productos.length === 0 ? (
-            <div className="text-center py-8">
-              <i className="fas fa-box-open text-4xl text-gray-300 mb-4"></i>
-              <p>No hay productos disponibles</p>
+            <div className="col-md-3">
+              <div className="form-group">
+                <label className="form-label">Estado</label>
+                <select className="form-control" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                  <option value="all">Todos</option>
+                  <option value="active">Activos</option>
+                  <option value="inactive">Inactivos</option>
+                </select>
+              </div>
+            </div>
+            <div className="col-md-3">
+              <div className="form-group">
+                <label className="form-label">&nbsp;</label>
+                <button onClick={fetchProductos} className="btn btn-secondary w-100">
+                  <i className="fas fa-sync-alt"></i>
+                  Actualizar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Products Table */}
+      <div className="card">
+        <div className="card-header">
+          <h2 className="card-title">
+            <i className="fas fa-list mr-2"></i>
+            Lista de Productos ({filteredProductos.length})
+          </h2>
+        </div>
+        <div className="card-body p-0">
+          {loading ? (
+            <div className="loading-container">
+              <div className="loading-spinner"></div>
+              <p className="loading-text">Cargando productos...</p>
+            </div>
+          ) : filteredProductos.length === 0 ? (
+            <div className="empty-state">
+              <i className="fas fa-box-open"></i>
+              <h3>No hay productos disponibles</h3>
+              <p>
+                {searchTerm || filterStatus !== "all"
+                  ? "No se encontraron productos con los filtros aplicados"
+                  : "Comienza agregando tu primer producto"}
+              </p>
+              {!searchTerm && filterStatus === "all" && (
+                <button onClick={handleCreateProducto} className="btn btn-primary">
+                  <i className="fas fa-plus mr-2"></i>
+                  Crear Primer Producto
+                </button>
+              )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+            <div className="table-responsive">
+              <table className="table">
+                <thead>
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Imagen
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Nombre
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Precio
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Categoría
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Código
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Estado
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Acciones
-                    </th>
+                    <th>Imagen</th>
+                    <th>Información</th>
+                    <th>Precio</th>
+                    <th>Categoría</th>
+                    <th>Seña</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {productos.map((producto) => (
+                <tbody>
+                  {filteredProductos.map((producto) => (
                     <tr key={producto.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td>
                         {producto.foto ? (
                           <img
                             src={
@@ -194,46 +253,80 @@ const ProductosPage = () => {
                                 : `data:image/jpeg;base64,${producto.foto}`
                             }
                             alt={producto.nombre}
-                            className="h-12 w-12 object-cover rounded"
+                            className="image-preview"
                           />
                         ) : (
-                          <div className="h-12 w-12 bg-gray-200 rounded flex items-center justify-center">
-                            <i className="fas fa-image text-gray-400"></i>
+                          <div className="image-placeholder">
+                            <i className="fas fa-image"></i>
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{producto.nombre}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{formatPrice(producto.precio)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{producto.categoria || "Sin categoría"}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{producto.codigo}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td>
+                        <div>
+                          <div className="font-weight-bold">{producto.nombre}</div>
+                          <div className="text-muted small">Código: {producto.codigo}</div>
+                          <div className="text-muted small description-preview">{producto.descripcion}</div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="font-weight-bold text-success">{formatPrice(producto.precio)}</span>
+                      </td>
+                      <td>
+                        <span className="badge badge-info">{producto.categoria || "Sin categoría"}</span>
+                      </td>
+                      <td>
+                        {producto.sena ? (
+                          <div className="sena-link">
+                            <span className="sena-name">{producto.sena.nombre}</span>
+                            {producto.sena.video && (
+                              <a
+                                href={producto.sena.video}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="video-link"
+                                title="Ver video de la seña"
+                              >
+                                <i className="fas fa-play-circle"></i>
+                              </a>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted">Sin seña</span>
+                        )}
+                      </td>
+                      <td>
                         {producto.status ? (
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                          <span className="badge badge-success">
+                            <i className="fas fa-check mr-1"></i>
                             Activo
                           </span>
                         ) : (
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                          <span className="badge badge-danger">
+                            <i className="fas fa-times mr-1"></i>
                             Inactivo
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex space-x-2">
+                      <td>
+                        <div className="table-actions">
                           <button
                             onClick={() => handleViewProducto(producto)}
-                            className="text-blue-600 hover:text-blue-900"
+                            className="action-btn view"
+                            title="Ver producto"
                           >
                             <i className="fas fa-eye"></i>
                           </button>
                           <button
                             onClick={() => handleEditProducto(producto)}
-                            className="text-yellow-600 hover:text-yellow-900"
+                            className="action-btn edit"
+                            title="Editar producto"
                           >
                             <i className="fas fa-edit"></i>
                           </button>
                           <button
                             onClick={() => handleDeleteProducto(producto)}
-                            className="text-red-600 hover:text-red-900"
+                            className="action-btn delete"
+                            title="Eliminar producto"
                           >
                             <i className="fas fa-trash-alt"></i>
                           </button>
@@ -248,10 +341,12 @@ const ProductosPage = () => {
         </div>
       </div>
 
+      {/* Modals */}
       <FormModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={modalMode === "create" ? "Nuevo Producto" : modalMode === "edit" ? "Editar Producto" : "Ver Producto"}
+        size="lg"
       >
         <ProductoForm producto={selectedProducto} onSave={handleSaveProducto} readOnly={modalMode === "view"} />
       </FormModal>
@@ -261,7 +356,8 @@ const ProductosPage = () => {
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={confirmDelete}
         title="Confirmar Eliminación"
-        message="¿Estás seguro de que deseas eliminar este producto? Esta acción no se puede deshacer."
+        message={`¿Estás seguro de que deseas eliminar el producto "${selectedProducto?.nombre}"? Esta acción no se puede deshacer.`}
+        itemName={selectedProducto?.nombre}
       />
     </div>
   )

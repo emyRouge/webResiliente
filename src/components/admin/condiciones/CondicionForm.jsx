@@ -1,19 +1,27 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
+import { useApi } from "../../../context/ApiContext"
 
-const CondicionForm = ({ condicion, viewOnly, onSave, onClose }) => {
+const CondicionForm = ({ condicion, onSave, onCancel }) => {
+  const { createCondicion, updateCondicion } = useApi()
   const [formData, setFormData] = useState({
     nombre: "",
     descripcion: "",
+    tipo: "",
+    caracteristicas: "",
     status: true,
   })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
 
   useEffect(() => {
     if (condicion) {
       setFormData({
         nombre: condicion.nombre || "",
         descripcion: condicion.descripcion || "",
+        tipo: condicion.tipo || "",
+        caracteristicas: condicion.caracteristicas || "",
         status: condicion.status !== undefined ? condicion.status : true,
       })
     }
@@ -21,111 +29,126 @@ const CondicionForm = ({ condicion, viewOnly, onSave, onClose }) => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
-    setFormData((prev) => ({
-      ...prev,
+    setFormData({
+      ...formData,
       [name]: type === "checkbox" ? checked : value,
-    }))
+    })
   }
 
-  const handleRadioChange = (e) => {
-    setFormData((prev) => ({
-      ...prev,
-      status: e.target.value === "true",
-    }))
-  }
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    if (viewOnly) return
+    setLoading(true)
+    setError("")
 
-    onSave(formData)
+    try {
+      let response
+      if (condicion) {
+        response = await updateCondicion(condicion.id, formData)
+      } else {
+        response = await createCondicion(formData)
+      }
+
+      if (response.success) {
+        onSave(response.data)
+      } else {
+        setError(response.message || "Error al guardar la condición")
+      }
+    } catch (err) {
+      setError("Error de conexión al servidor")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <div className="modal-overlay open">
-      <div className="modal" style={{ maxWidth: "600px" }}>
-        <div className="modal-header">
-          <h2 className="modal-title">
-            {viewOnly ? "Ver Condición" : condicion ? "Editar Condición" : "Nueva Condición"}
-          </h2>
-          <button className="modal-close" onClick={onClose}>
-            &times;
-          </button>
-        </div>
-        <div className="modal-body">
-          <form id="condicionForm" onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label htmlFor="nombre" className="form-label">
-                Nombre *
-              </label>
-              <input
-                type="text"
-                id="nombre"
-                name="nombre"
-                className="form-control"
-                value={formData.nombre}
-                onChange={handleChange}
-                disabled={viewOnly}
-                required
-              />
-            </div>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {error && <div className="alert alert-danger">{error}</div>}
 
-            <div className="form-group">
-              <label htmlFor="descripcion" className="form-label">
-                Descripción *
-              </label>
-              <textarea
-                id="descripcion"
-                name="descripcion"
-                className="form-control"
-                value={formData.descripcion}
-                onChange={handleChange}
-                disabled={viewOnly}
-                required
-              ></textarea>
-            </div>
+      <div className="form-group">
+        <label className="form-label">Nombre *</label>
+        <input
+          type="text"
+          name="nombre"
+          value={formData.nombre}
+          onChange={handleChange}
+          required
+          className="form-control"
+          placeholder="Nombre de la condición"
+        />
+      </div>
 
-            <div className="form-group">
-              <label className="form-label">Estado</label>
-              <div>
-                <label style={{ marginRight: "1rem" }}>
-                  <input
-                    type="radio"
-                    name="status"
-                    value="true"
-                    checked={formData.status === true}
-                    onChange={handleRadioChange}
-                    disabled={viewOnly}
-                  />{" "}
-                  Activo
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    name="status"
-                    value="false"
-                    checked={formData.status === false}
-                    onChange={handleRadioChange}
-                    disabled={viewOnly}
-                  />{" "}
-                  Inactivo
-                </label>
-              </div>
-            </div>
-          </form>
-        </div>
-        <div className="modal-footer">
-          <button className="btn btn-danger" onClick={onClose}>
-            Cancelar
-          </button>
-          {!viewOnly && (
-            <button className="btn btn-success" onClick={handleSubmit}>
-              {condicion ? "Actualizar Condición" : "Guardar Condición"}
-            </button>
-          )}
+      <div className="form-group">
+        <label className="form-label">Tipo</label>
+        <select name="tipo" value={formData.tipo} onChange={handleChange} className="form-control">
+          <option value="">Seleccionar tipo</option>
+          <option value="fisica">Física</option>
+          <option value="cognitiva">Cognitiva</option>
+          <option value="sensorial">Sensorial</option>
+          <option value="multiple">Múltiple</option>
+          <option value="otra">Otra</option>
+        </select>
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Descripción *</label>
+        <textarea
+          name="descripcion"
+          value={formData.descripcion}
+          onChange={handleChange}
+          required
+          rows="3"
+          className="form-control"
+          placeholder="Descripción de la condición"
+        ></textarea>
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Características</label>
+        <textarea
+          name="caracteristicas"
+          value={formData.caracteristicas}
+          onChange={handleChange}
+          rows="3"
+          className="form-control"
+          placeholder="Características específicas de la condición"
+        ></textarea>
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Estado</label>
+        <div className="mt-2">
+          <label className="inline-flex items-center mr-4">
+            <input
+              type="radio"
+              name="status"
+              checked={formData.status === true}
+              onChange={() => setFormData({ ...formData, status: true })}
+              className="form-radio"
+            />
+            <span className="ml-2">Activo</span>
+          </label>
+          <label className="inline-flex items-center">
+            <input
+              type="radio"
+              name="status"
+              checked={formData.status === false}
+              onChange={() => setFormData({ ...formData, status: false })}
+              className="form-radio"
+            />
+            <span className="ml-2">Inactivo</span>
+          </label>
         </div>
       </div>
-    </div>
+
+      <div className="flex justify-end space-x-2">
+        <button type="button" onClick={onCancel} className="btn btn-secondary" disabled={loading}>
+          Cancelar
+        </button>
+        <button type="submit" className="btn btn-primary" disabled={loading}>
+          {loading ? "Guardando..." : "Guardar"}
+        </button>
+      </div>
+    </form>
   )
 }
 

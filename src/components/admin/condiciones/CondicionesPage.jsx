@@ -1,262 +1,197 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { showAlert } from "../common/AlertContainer"
+import { useState, useEffect } from "react"
+import { useApi } from "../../../context/ApiContext"
+import AlertContainer from "../common/AlertContainer"
 import DeleteConfirmationModal from "../common/DeleteConfirmationModal"
+import FormModal from "../common/FormModal"
 import CondicionForm from "./CondicionForm"
 
 const CondicionesPage = () => {
   const [condiciones, setCondiciones] = useState([])
-  const [loading, setLoading] = useState(true)
   const [selectedCondicion, setSelectedCondicion] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [viewMode, setViewMode] = useState(false) // true = view only, false = edit
-  const [statusFilter, setStatusFilter] = useState("")
+  const [alerts, setAlerts] = useState([])
+  const [loading, setLoading] = useState(false)
+  const { getCondiciones, deleteCondicion } = useApi()
 
   useEffect(() => {
-    fetchCondiciones()
+    loadCondiciones()
   }, [])
 
-  const fetchCondiciones = async (status = "") => {
+  const loadCondiciones = async () => {
     setLoading(true)
     try {
-      let url = "http://localhost:8080/condiciones"
-
-      if (status !== "") {
-        url = `http://localhost:8080/condiciones/estado/${status}`
+      const response = await getCondiciones()
+      if (response?.success) {
+        setCondiciones(response.data || [])
+      } else {
+        addAlert(response?.message || "Error al cargar las condiciones.", "danger")
       }
-
-      const response = await fetch(url)
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`)
-      }
-
-      const data = await response.json()
-      setCondiciones(data.datos || [])
     } catch (error) {
-      console.error("Error al obtener condiciones:", error)
-      showAlert(`Error al cargar condiciones: ${error.message}`, "danger")
+      addAlert("Error al conectar con el servidor", "danger")
     } finally {
       setLoading(false)
     }
   }
 
-  const handleFilterChange = (e) => {
-    const status = e.target.value
-    setStatusFilter(status)
-    fetchCondiciones(status)
-  }
-
-  const handleViewCondicion = (condicion) => {
+  const handleOpenModal = (condicion = null) => {
     setSelectedCondicion(condicion)
-    setViewMode(true)
     setIsModalOpen(true)
   }
 
-  const handleEditCondicion = (condicion) => {
-    setSelectedCondicion(condicion)
-    setViewMode(false)
-    setIsModalOpen(true)
-  }
-
-  const handleNewCondicion = () => {
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
     setSelectedCondicion(null)
-    setViewMode(false)
-    setIsModalOpen(true)
   }
 
-  const handleDeleteClick = (condicion) => {
+  const handleDelete = (condicion) => {
     setSelectedCondicion(condicion)
     setIsDeleteModalOpen(true)
   }
 
-  const handleDeleteCondicion = async () => {
-    try {
-      const response = await fetch(`http://localhost:8080/condiciones/${selectedCondicion.id}`, {
-        method: "DELETE",
-      })
-
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`)
+  const confirmDelete = async () => {
+    if (selectedCondicion) {
+      const response = await deleteCondicion(selectedCondicion.id)
+      setIsDeleteModalOpen(false)
+      if (response?.success) {
+        addAlert("Condición eliminada correctamente.", "success")
+        loadCondiciones()
+      } else {
+        addAlert(response?.message || "Error al eliminar la condición.", "danger")
       }
-
-      // Update the list
-      fetchCondiciones(statusFilter)
-      showAlert("Condición eliminada exitosamente", "success")
-    } catch (error) {
-      console.error("Error al eliminar condición:", error)
-      showAlert(`Error al eliminar condición: ${error.message}`, "danger")
-      throw error
     }
   }
 
-  const handleSaveCondicion = async (condicionData) => {
-    try {
-      let url = "http://localhost:8080/condiciones"
-      let method = "POST"
+  const handleCloseDeleteModal = () => {
+    setIsDeleteModalOpen(false)
+    setSelectedCondicion(null)
+  }
 
-      if (selectedCondicion?.id) {
-        url += `/${selectedCondicion.id}`
-        method = "PUT"
-      }
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(condicionData),
-      })
-
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status}`)
-      }
-
-      // Update the list
-      fetchCondiciones(statusFilter)
-
-      // Show success message
-      const message = selectedCondicion?.id ? "Condición actualizada exitosamente" : "Condición creada exitosamente"
-      showAlert(message, "success")
-
-      // Close the modal
-      setIsModalOpen(false)
-    } catch (error) {
-      console.error("Error al guardar condición:", error)
-      showAlert(`Error al guardar condición: ${error.message}`, "danger")
-      throw error
-    }
+  const addAlert = (message, type) => {
+    const id = Date.now()
+    setAlerts((prevAlerts) => [...prevAlerts, { id, message, type }])
+    setTimeout(() => {
+      setAlerts((prevAlerts) => prevAlerts.filter((alert) => alert.id !== id))
+    }, 5000)
   }
 
   return (
-    <>
+    <div className="admin-page">
       <div className="page-header">
-        <h1 className="page-title">Gestión de Condiciones</h1>
-        <button className="btn btn-primary" onClick={handleNewCondicion}>
-          <i className="fas fa-plus btn-icon"></i> Nueva Condición
+        <h1 className="page-title">
+          <i className="fas fa-list-check mr-3"></i>
+          Condiciones
+        </h1>
+        <button onClick={() => handleOpenModal()} className="btn btn-primary">
+          <i className="fas fa-plus"></i>
+          Nueva Condición
         </button>
       </div>
 
+      <AlertContainer alerts={alerts} />
+
       <div className="card">
         <div className="card-header">
-          <h2 className="card-title">Lista de Condiciones</h2>
-          <div className="card-actions">
-            <select
-              id="statusFilter"
-              className="form-control"
-              style={{ width: "200px", marginRight: "10px" }}
-              value={statusFilter}
-              onChange={handleFilterChange}
-            >
-              <option value="">Todos los estados</option>
-              <option value="true">Activas</option>
-              <option value="false">Inactivas</option>
-            </select>
-            <button
-              className="btn btn-primary"
-              onClick={() => {
-                setStatusFilter("")
-                fetchCondiciones()
-              }}
-            >
-              <i className="fas fa-sync-alt btn-icon"></i> Actualizar
-            </button>
-          </div>
+          <h2 className="card-title">
+            <i className="fas fa-list mr-2"></i>
+            Lista de Condiciones ({condiciones.length})
+          </h2>
         </div>
-        <div className="card-body">
-          <div className="table-responsive">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Descripción</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
+        <div className="card-body p-0">
+          {loading ? (
+            <div className="loading-container">
+              <div className="loading-spinner"></div>
+              <p className="loading-text">Cargando condiciones...</p>
+            </div>
+          ) : condiciones.length === 0 ? (
+            <div className="empty-state">
+              <i className="fas fa-list-check"></i>
+              <h3>No hay condiciones disponibles</h3>
+              <p>Comienza agregando tu primera condición</p>
+              <button onClick={() => handleOpenModal()} className="btn btn-primary">
+                <i className="fas fa-plus mr-2"></i>
+                Crear Primera Condición
+              </button>
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="table">
+                <thead>
                   <tr>
-                    <td colSpan="4" className="text-center">
-                      <div style={{ padding: "2rem", textAlign: "center" }}>
-                        <i className="fas fa-spinner fa-spin fa-2x"></i>
-                        <p>Cargando condiciones...</p>
-                      </div>
-                    </td>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
                   </tr>
-                ) : condiciones.length === 0 ? (
-                  <tr>
-                    <td colSpan="4" className="text-center">
-                      <div style={{ padding: "2rem", textAlign: "center" }}>
-                        <i className="fas fa-wheelchair fa-2x" style={{ color: "#ccc", marginBottom: "1rem" }}></i>
-                        <p>No hay condiciones disponibles</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  condiciones.map((condicion) => (
+                </thead>
+                <tbody>
+                  {condiciones.map((condicion) => (
                     <tr key={condicion.id}>
+                      <td>{condicion.id}</td>
                       <td>{condicion.nombre}</td>
+                      <td>{condicion.descripcion}</td>
                       <td>
-                        <div className="description-preview">
-                          {condicion.descripcion || <span className="text-muted">Sin descripción</span>}
-                        </div>
-                      </td>
-                      <td>
-                        {condicion.status ? (
-                          <span className="badge badge-success">Activo</span>
-                        ) : (
-                          <span className="badge badge-danger">Inactivo</span>
-                        )}
+                        <span className={`badge ${condicion.status ? "badge-success" : "badge-danger"}`}>
+                          {condicion.status ? "Activo" : "Inactivo"}
+                        </span>
                       </td>
                       <td>
                         <div className="table-actions">
-                          <button className="btn btn-sm btn-info" onClick={() => handleViewCondicion(condicion)}>
-                            <i className="fas fa-eye"></i>
-                          </button>
-                          <button className="btn btn-sm btn-warning" onClick={() => handleEditCondicion(condicion)}>
+                          <button
+                            onClick={() => handleOpenModal(condicion)}
+                            className="action-btn edit"
+                            title="Editar condición"
+                          >
                             <i className="fas fa-edit"></i>
                           </button>
-                          <button className="btn btn-sm btn-danger" onClick={() => handleDeleteClick(condicion)}>
+                          <button
+                            onClick={() => handleDelete(condicion)}
+                            className="action-btn delete"
+                            title="Eliminar condición"
+                          >
                             <i className="fas fa-trash-alt"></i>
                           </button>
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Form Modal */}
-      {isModalOpen && (
+      <FormModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        title={selectedCondicion ? "Editar Condición" : "Nueva Condición"}
+      >
         <CondicionForm
           condicion={selectedCondicion}
-          viewOnly={viewMode}
-          onSave={handleSaveCondicion}
-          onClose={() => setIsModalOpen(false)}
+          onSave={(data) => {
+            if (data) {
+              addAlert("Condición guardada correctamente.", "success")
+            }
+            handleCloseModal()
+            loadCondiciones()
+          }}
+          onCancel={handleCloseModal}
         />
-      )}
+      </FormModal>
 
-      {/* Delete Confirmation Modal */}
       <DeleteConfirmationModal
         isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={handleDeleteCondicion}
-        message={
-          <>
-            <p>¿Estás seguro de que deseas eliminar esta condición? Esta acción no se puede deshacer.</p>
-            <p className="text-danger">
-              <strong>Nota:</strong> Eliminar una condición puede afectar a los meseros asociados a ella.
-            </p>
-          </>
-        }
+        onClose={handleCloseDeleteModal}
+        onConfirm={confirmDelete}
+        title="Confirmar Eliminación"
+        message={`¿Estás seguro de que deseas eliminar la condición "${selectedCondicion?.nombre}"? Esta acción no se puede deshacer.`}
+        itemName={selectedCondicion?.nombre}
       />
-    </>
+    </div>
   )
 }
 

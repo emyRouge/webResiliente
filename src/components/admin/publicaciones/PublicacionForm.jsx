@@ -1,15 +1,22 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useApi } from "../../../context/ApiContext"
 import FileUploader from "../common/FileUploader"
 
-const PublicacionForm = ({ publicacion, onSave, readOnly }) => {
+const PublicacionForm = ({ publicacion, onSave, onCancel }) => {
+  const { createPost, updatePost } = useApi()
   const [formData, setFormData] = useState({
     titulo: "",
     contenido: "",
     imagen: "",
+    autor: "",
+    categoria: "",
+    fechaPublicacion: "",
     status: true,
   })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
 
   useEffect(() => {
     if (publicacion) {
@@ -17,8 +24,15 @@ const PublicacionForm = ({ publicacion, onSave, readOnly }) => {
         titulo: publicacion.titulo || "",
         contenido: publicacion.contenido || "",
         imagen: publicacion.imagen || "",
+        autor: publicacion.autor || "",
+        categoria: publicacion.categoria || "",
+        fechaPublicacion: publicacion.fechaPublicacion || "",
         status: publicacion.status !== undefined ? publicacion.status : true,
       })
+    } else {
+      // Set default date for new publications
+      const today = new Date().toISOString().split("T")[0]
+      setFormData((prev) => ({ ...prev, fechaPublicacion: today }))
     }
   }, [publicacion])
 
@@ -37,60 +51,106 @@ const PublicacionForm = ({ publicacion, onSave, readOnly }) => {
     })
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    onSave(formData)
+    setLoading(true)
+    setError("")
+
+    try {
+      let response
+      if (publicacion) {
+        response = await updatePost(publicacion.id, formData)
+      } else {
+        response = await createPost(formData)
+      }
+
+      if (response.success) {
+        onSave(response.data)
+      } else {
+        setError(response.message || "Error al guardar la publicación")
+      }
+    } catch (err) {
+      setError("Error de conexión al servidor")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Título *</label>
+      {error && <div className="alert alert-danger">{error}</div>}
+
+      <div className="form-group">
+        <label className="form-label">Título *</label>
         <input
           type="text"
           name="titulo"
           value={formData.titulo}
           onChange={handleChange}
-          disabled={readOnly}
           required
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          className="form-control"
+          placeholder="Título de la publicación"
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Contenido *</label>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="form-group">
+          <label className="form-label">Autor *</label>
+          <input
+            type="text"
+            name="autor"
+            value={formData.autor}
+            onChange={handleChange}
+            required
+            className="form-control"
+            placeholder="Nombre del autor"
+          />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Categoría</label>
+          <input
+            type="text"
+            name="categoria"
+            value={formData.categoria}
+            onChange={handleChange}
+            className="form-control"
+            placeholder="Categoría de la publicación"
+          />
+        </div>
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Fecha de Publicación *</label>
+        <input
+          type="date"
+          name="fechaPublicacion"
+          value={formData.fechaPublicacion}
+          onChange={handleChange}
+          required
+          className="form-control"
+        />
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Contenido *</label>
         <textarea
           name="contenido"
           value={formData.contenido}
           onChange={handleChange}
-          disabled={readOnly}
           required
           rows="6"
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          className="form-control"
+          placeholder="Contenido de la publicación"
         ></textarea>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Imagen de la Publicación</label>
-        {readOnly ? (
-          formData.imagen ? (
-            <div className="mt-2">
-              <img
-                src={formData.imagen.startsWith("http") ? formData.imagen : `data:image/jpeg;base64,${formData.imagen}`}
-                alt="Vista previa"
-                className="max-h-40 rounded"
-              />
-            </div>
-          ) : (
-            <p className="mt-2 text-sm text-gray-500">Sin imagen</p>
-          )
-        ) : (
-          <FileUploader currentFile={formData.imagen} onFileUploaded={handleFileUpload} accept="image/*" />
-        )}
+      <div className="form-group">
+        <label className="form-label">Imagen</label>
+        <FileUploader currentFile={formData.imagen} onFileUploaded={handleFileUpload} accept="image/*" />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Estado</label>
+      <div className="form-group">
+        <label className="form-label">Estado</label>
         <div className="mt-2">
           <label className="inline-flex items-center mr-4">
             <input
@@ -98,8 +158,7 @@ const PublicacionForm = ({ publicacion, onSave, readOnly }) => {
               name="status"
               checked={formData.status === true}
               onChange={() => setFormData({ ...formData, status: true })}
-              disabled={readOnly}
-              className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300"
+              className="form-radio"
             />
             <span className="ml-2">Activo</span>
           </label>
@@ -109,31 +168,21 @@ const PublicacionForm = ({ publicacion, onSave, readOnly }) => {
               name="status"
               checked={formData.status === false}
               onChange={() => setFormData({ ...formData, status: false })}
-              disabled={readOnly}
-              className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300"
+              className="form-radio"
             />
             <span className="ml-2">Inactivo</span>
           </label>
         </div>
       </div>
 
-      {!readOnly && (
-        <div className="flex justify-end space-x-2">
-          <button
-            type="button"
-            onClick={() => onSave(null)}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Guardar
-          </button>
-        </div>
-      )}
+      <div className="flex justify-end space-x-2">
+        <button type="button" onClick={onCancel} className="btn btn-secondary" disabled={loading}>
+          Cancelar
+        </button>
+        <button type="submit" className="btn btn-primary" disabled={loading}>
+          {loading ? "Guardando..." : "Guardar"}
+        </button>
+      </div>
     </form>
   )
 }

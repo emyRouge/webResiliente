@@ -1,52 +1,31 @@
-"use client"
+const AlertContainer = ({ alerts = [] }) => {
+  if (!alerts.length) return null
 
-import { useState, useEffect } from "react"
-import Alert from "./Alert"
-
-const AlertContainer = () => {
-  const [alerts, setAlerts] = useState([])
-
-  // Add a global event listener for showing alerts
-  useEffect(() => {
-    const showAlert = (event) => {
-      const { message, type, duration } = event.detail
-
-      const id = Date.now()
-      setAlerts((prev) => [...prev, { id, message, type, duration }])
+  const getAlertIcon = (type) => {
+    switch (type) {
+      case "success":
+        return "fas fa-check-circle"
+      case "danger":
+        return "fas fa-exclamation-circle"
+      case "warning":
+        return "fas fa-exclamation-triangle"
+      case "info":
+        return "fas fa-info-circle"
+      default:
+        return "fas fa-info-circle"
     }
-
-    window.addEventListener("showAlert", showAlert)
-
-    return () => {
-      window.removeEventListener("showAlert", showAlert)
-    }
-  }, [])
-
-  const removeAlert = (id) => {
-    setAlerts((prev) => prev.filter((alert) => alert.id !== id))
   }
 
   return (
-    <div id="alertContainer">
+    <div className="alert-container mb-4">
       {alerts.map((alert) => (
-        <Alert
-          key={alert.id}
-          message={alert.message}
-          type={alert.type}
-          duration={alert.duration}
-          onClose={() => removeAlert(alert.id)}
-        />
+        <div key={alert.id} className={`alert alert-${alert.type}`}>
+          <i className={getAlertIcon(alert.type)}></i>
+          {alert.message}
+        </div>
       ))}
     </div>
   )
-}
-
-// Helper function to show alerts from anywhere in the app
-export const showAlert = (message, type = "info", duration = 5000) => {
-  const event = new CustomEvent("showAlert", {
-    detail: { message, type, duration },
-  })
-  window.dispatchEvent(event)
 }
 
 export default AlertContainer

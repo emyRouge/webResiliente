@@ -4,41 +4,45 @@ import { useState, useEffect } from "react"
 import { useApi } from "../../../context/ApiContext"
 import FileUploader from "../common/FileUploader"
 
-const ProductoTiendaForm = ({ productoTienda, onSave, onCancel }) => {
-  const { createProductoTienda, updateProductoTienda } = useApi()
+const TallerForm = ({ taller, onSave, onCancel }) => {
+  const { createWorkshop, updateWorkshop } = useApi()
   const [formData, setFormData] = useState({
     nombre: "",
     descripcion: "",
+    fechaInicio: "",
+    fechaFin: "",
+    horaInicio: "",
+    horaFin: "",
+    instructor: "",
+    cupos: "",
     precio: "",
-    categoria: "",
+    ubicacion: "",
+    requisitos: "",
     imagen: "",
-    descuento: "0",
-    caracteristicas: "",
-    stock: "",
-    peso: "",
-    dimensiones: "",
     status: true,
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
   useEffect(() => {
-    if (productoTienda) {
+    if (taller) {
       setFormData({
-        nombre: productoTienda.nombre || "",
-        descripcion: productoTienda.descripcion || "",
-        precio: productoTienda.precio || "",
-        categoria: productoTienda.categoria || "",
-        imagen: productoTienda.imagen || "",
-        descuento: productoTienda.descuento || "0",
-        caracteristicas: productoTienda.caracteristicas || "",
-        stock: productoTienda.stock || "",
-        peso: productoTienda.peso || "",
-        dimensiones: productoTienda.dimensiones || "",
-        status: productoTienda.status !== undefined ? productoTienda.status : true,
+        nombre: taller.nombre || "",
+        descripcion: taller.descripcion || "",
+        fechaInicio: taller.fechaInicio || "",
+        fechaFin: taller.fechaFin || "",
+        horaInicio: taller.horaInicio || "",
+        horaFin: taller.horaFin || "",
+        instructor: taller.instructor || "",
+        cupos: taller.cupos || "",
+        precio: taller.precio || "",
+        ubicacion: taller.ubicacion || "",
+        requisitos: taller.requisitos || "",
+        imagen: taller.imagen || "",
+        status: taller.status !== undefined ? taller.status : true,
       })
     }
-  }, [productoTienda])
+  }, [taller])
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -64,23 +68,21 @@ const ProductoTiendaForm = ({ productoTienda, onSave, onCancel }) => {
       // Convert numeric fields
       const dataToSubmit = {
         ...formData,
-        precio: Number.parseFloat(formData.precio),
-        descuento: Number.parseFloat(formData.descuento),
-        stock: formData.stock ? Number.parseInt(formData.stock) : 0,
-        peso: formData.peso ? Number.parseFloat(formData.peso) : null,
+        cupos: formData.cupos ? Number.parseInt(formData.cupos) : null,
+        precio: formData.precio ? Number.parseFloat(formData.precio) : null,
       }
 
       let response
-      if (productoTienda) {
-        response = await updateProductoTienda(productoTienda.id, dataToSubmit)
+      if (taller) {
+        response = await updateWorkshop(taller.id, dataToSubmit)
       } else {
-        response = await createProductoTienda(dataToSubmit)
+        response = await createWorkshop(dataToSubmit)
       }
 
       if (response.success) {
         onSave(response.data)
       } else {
-        setError(response.message || "Error al guardar el producto")
+        setError(response.message || "Error al guardar el taller")
       }
     } catch (err) {
       setError("Error de conexión al servidor")
@@ -94,7 +96,7 @@ const ProductoTiendaForm = ({ productoTienda, onSave, onCancel }) => {
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="form-group">
-        <label className="form-label">Nombre *</label>
+        <label className="form-label">Nombre del Taller *</label>
         <input
           type="text"
           name="nombre"
@@ -102,7 +104,7 @@ const ProductoTiendaForm = ({ productoTienda, onSave, onCancel }) => {
           onChange={handleChange}
           required
           className="form-control"
-          placeholder="Nombre del producto"
+          placeholder="Nombre del taller"
         />
       </div>
 
@@ -113,106 +115,121 @@ const ProductoTiendaForm = ({ productoTienda, onSave, onCancel }) => {
           value={formData.descripcion}
           onChange={handleChange}
           required
-          rows="3"
+          rows="4"
           className="form-control"
-          placeholder="Descripción del producto"
+          placeholder="Descripción detallada del taller"
         ></textarea>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="form-group">
-          <label className="form-label">Precio *</label>
+          <label className="form-label">Instructor *</label>
           <input
-            type="number"
-            name="precio"
-            value={formData.precio}
+            type="text"
+            name="instructor"
+            value={formData.instructor}
             onChange={handleChange}
             required
-            min="0"
-            step="0.01"
             className="form-control"
-            placeholder="0.00"
+            placeholder="Nombre del instructor"
           />
         </div>
 
         <div className="form-group">
-          <label className="form-label">Stock</label>
+          <label className="form-label">Ubicación</label>
           <input
-            type="number"
-            name="stock"
-            value={formData.stock}
+            type="text"
+            name="ubicacion"
+            value={formData.ubicacion}
             onChange={handleChange}
-            min="0"
             className="form-control"
-            placeholder="Cantidad disponible"
-          />
-        </div>
-
-        <div className="form-group">
-          <label className="form-label">Descuento (%)</label>
-          <input
-            type="number"
-            name="descuento"
-            value={formData.descuento}
-            onChange={handleChange}
-            min="0"
-            max="100"
-            step="0.01"
-            className="form-control"
-            placeholder="0"
+            placeholder="Lugar donde se realizará"
           />
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="form-group">
-          <label className="form-label">Categoría</label>
+          <label className="form-label">Fecha Inicio *</label>
           <input
-            type="text"
-            name="categoria"
-            value={formData.categoria}
+            type="date"
+            name="fechaInicio"
+            value={formData.fechaInicio}
             onChange={handleChange}
+            required
             className="form-control"
-            placeholder="Categoría del producto"
           />
         </div>
 
         <div className="form-group">
-          <label className="form-label">Peso (kg)</label>
+          <label className="form-label">Fecha Fin *</label>
+          <input
+            type="date"
+            name="fechaFin"
+            value={formData.fechaFin}
+            onChange={handleChange}
+            required
+            className="form-control"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="form-group">
+          <label className="form-label">Hora Inicio</label>
+          <input
+            type="time"
+            name="horaInicio"
+            value={formData.horaInicio}
+            onChange={handleChange}
+            className="form-control"
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Hora Fin</label>
+          <input type="time" name="horaFin" value={formData.horaFin} onChange={handleChange} className="form-control" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="form-group">
+          <label className="form-label">Cupos Disponibles</label>
           <input
             type="number"
-            name="peso"
-            value={formData.peso}
+            name="cupos"
+            value={formData.cupos}
+            onChange={handleChange}
+            min="1"
+            className="form-control"
+            placeholder="Número de cupos"
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Precio</label>
+          <input
+            type="number"
+            name="precio"
+            value={formData.precio}
             onChange={handleChange}
             min="0"
             step="0.01"
             className="form-control"
-            placeholder="Peso en kilogramos"
+            placeholder="Precio del taller"
           />
         </div>
       </div>
 
       <div className="form-group">
-        <label className="form-label">Dimensiones</label>
-        <input
-          type="text"
-          name="dimensiones"
-          value={formData.dimensiones}
-          onChange={handleChange}
-          className="form-control"
-          placeholder="Ej: 20cm x 15cm x 10cm"
-        />
-      </div>
-
-      <div className="form-group">
-        <label className="form-label">Características</label>
+        <label className="form-label">Requisitos</label>
         <textarea
-          name="caracteristicas"
-          value={formData.caracteristicas}
+          name="requisitos"
+          value={formData.requisitos}
           onChange={handleChange}
           rows="3"
           className="form-control"
-          placeholder="Características especiales del producto"
+          placeholder="Requisitos para participar en el taller"
         ></textarea>
       </div>
 
@@ -259,4 +276,4 @@ const ProductoTiendaForm = ({ productoTienda, onSave, onCancel }) => {
   )
 }
 
-export default ProductoTiendaForm
+export default TallerForm
