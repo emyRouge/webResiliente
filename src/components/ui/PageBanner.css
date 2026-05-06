@@ -1,12 +1,39 @@
 .page-banner {
-  background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url("https://placehold.co/1920x400") no-repeat
-    center center / cover;
-  color: var(--light-text);
-  padding: 80px 0;
+  background: linear-gradient(135deg, #0d2137 0%, #0c3a5a 40%, #0e5f8c 75%, #1a82b8 100%);
+  color: white;
+  padding: 72px 0 60px;
   text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.page-banner::before {
+  content: "";
+  position: absolute;
+  top: -40%;
+  left: 10%;
+  width: 80%;
+  height: 120%;
+  background: radial-gradient(ellipse, rgba(81, 187, 245, 0.15) 0%, transparent 65%);
+  pointer-events: none;
 }
 
 .page-banner h1 {
-  font-size: 2.5rem;
-  margin-bottom: 15px;
+  font-size: 2.4rem;
+  font-weight: 800;
+  margin-bottom: 12px;
+  letter-spacing: -0.5px;
+  position: relative;
+}
+
+.page-banner p {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.78);
+  position: relative;
+}
+
+@media (max-width: 576px) {
+  .page-banner h1 {
+    font-size: 1.8rem;
+  }
 }

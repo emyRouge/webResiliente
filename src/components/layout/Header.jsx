@@ -1,50 +1,70 @@
-"use client"
-
-import { useState } from "react"
-import { Link } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { NavLink } from "react-router-dom"
 import LoginModal from "../auth/LoginModal"
+import "./Header.css"
 
 const Header = () => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20)
+    window.addEventListener("scroll", handleScroll, { passive: true })
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
+
+  const closeMenu = () => setMenuOpen(false)
+
+  const navClass = ({ isActive }) => isActive ? "nav-link active" : "nav-link"
 
   return (
-    <header className="bg-white shadow-md">
-      <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center py-4">
-          <div className="flex items-center">
-            <Link to="/" className="text-2xl font-bold text-blue-600">
-              Resiliente
-            </Link>
-          </div>
+    <>
+      <header className={`site-header${scrolled ? " scrolled" : ""}`}>
+        <div className="container">
+          <div className="header-inner">
+            <NavLink to="/" className="header-logo" onClick={closeMenu}>
+              <span className="logo-main">Resiliente</span>
+              <span className="logo-sub">Café Inclusivo</span>
+            </NavLink>
 
-          <nav className="hidden md:flex space-x-6">
-            <Link to="/" className="text-gray-700 hover:text-blue-600">
-              Inicio
-            </Link>
-            <Link to="/productos" className="text-gray-700 hover:text-blue-600">
-              Productos
-            </Link>
-            <Link to="/publicaciones" className="text-gray-700 hover:text-blue-600">
-              Blog
-            </Link>
-            <Link to="/talleres" className="text-gray-700 hover:text-blue-600">
-              Talleres
-            </Link>
-          </nav>
+            <nav className={`header-nav${menuOpen ? " open" : ""}`}>
+              <NavLink to="/" end className={navClass} onClick={closeMenu}>Inicio</NavLink>
+              <NavLink to="/productos" className={navClass} onClick={closeMenu}>Productos</NavLink>
+              <NavLink to="/publicaciones" className={navClass} onClick={closeMenu}>Blog</NavLink>
+              <NavLink to="/talleres" className={navClass} onClick={closeMenu}>Talleres</NavLink>
+              <button
+                className="btn-empleados mobile-only"
+                onClick={() => { closeMenu(); setIsLoginModalOpen(true) }}
+              >
+                Solo para empleados
+              </button>
+            </nav>
 
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => setIsLoginModalOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
-            >
-              Solo para empleados
-            </button>
+            <div className="header-actions">
+              <button
+                className="btn-empleados desktop-only"
+                onClick={() => setIsLoginModalOpen(true)}
+              >
+                Solo para empleados
+              </button>
+              <button
+                className={`menu-toggle${menuOpen ? " open" : ""}`}
+                onClick={() => setMenuOpen(!menuOpen)}
+                aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
+              >
+                <span></span>
+                <span></span>
+                <span></span>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </header>
 
+      {menuOpen && <div className="menu-overlay" onClick={closeMenu} />}
       <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
-    </header>
+    </>
   )
 }
 

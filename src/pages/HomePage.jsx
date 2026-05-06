@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { useApi } from "../context/ApiContext"
 import Hero from "../components/home/Hero"
@@ -7,10 +5,10 @@ import Features from "../components/home/Features"
 import Testimonials from "../components/home/Testimonials"
 import Contact from "../components/home/Contact"
 import LoadingSpinner from "../components/ui/LoadingSpinner"
-import Message from "../components/ui/Message"
 import ProductCard from "../components/products/ProductCard"
 import PostCard from "../components/blog/PostCard"
 import WorkshopCard from "../components/workshops/WorkshopCard"
+import { MOCK_PRODUCTS, MOCK_POSTS, MOCK_WORKSHOPS } from "../data/mockData"
 import "./HomePage.css"
 
 const HomePage = () => {
@@ -18,28 +16,19 @@ const HomePage = () => {
   const [featuredProducts, setFeaturedProducts] = useState([])
   const [latestPosts, setLatestPosts] = useState([])
   const [upcomingWorkshops, setUpcomingWorkshops] = useState([])
-  const [loading, setLoading] = useState({
-    products: true,
-    posts: true,
-    workshops: true,
-  })
-  const [error, setError] = useState({
-    products: null,
-    posts: null,
-    workshops: null,
-  })
+  const [loading, setLoading] = useState({ products: true, posts: true, workshops: true })
 
   useEffect(() => {
     const loadFeaturedProducts = async () => {
       try {
         const result = await getProducts()
         if (result.success) {
-          setFeaturedProducts(result.data.slice(0, 3) || [])
+          setFeaturedProducts((result.data || []).slice(0, 3))
         } else {
-          setError((prev) => ({ ...prev, products: result.message }))
+          setFeaturedProducts(MOCK_PRODUCTS.slice(0, 3))
         }
-      } catch (err) {
-        setError((prev) => ({ ...prev, products: "Error al cargar los productos" }))
+      } catch {
+        setFeaturedProducts(MOCK_PRODUCTS.slice(0, 3))
       } finally {
         setLoading((prev) => ({ ...prev, products: false }))
       }
@@ -49,16 +38,15 @@ const HomePage = () => {
       try {
         const result = await getPosts()
         if (result.success) {
-          // Ordenar por fecha (más recientes primero)
-          const sortedPosts = (result.data || []).sort(
+          const sorted = (result.data || []).sort(
             (a, b) => new Date(b.fechaPublicacion) - new Date(a.fechaPublicacion),
           )
-          setLatestPosts(sortedPosts.slice(0, 3))
+          setLatestPosts(sorted.slice(0, 3))
         } else {
-          setError((prev) => ({ ...prev, posts: result.message }))
+          setLatestPosts(MOCK_POSTS.slice(0, 3))
         }
-      } catch (err) {
-        setError((prev) => ({ ...prev, posts: "Error al cargar las publicaciones" }))
+      } catch {
+        setLatestPosts(MOCK_POSTS.slice(0, 3))
       } finally {
         setLoading((prev) => ({ ...prev, posts: false }))
       }
@@ -68,18 +56,16 @@ const HomePage = () => {
       try {
         const result = await getWorkshops()
         if (result.success) {
-          // Filtrar talleres futuros y ordenar por fecha
           const today = new Date()
-          const futureWorkshops = (result.data || [])
-            .filter((workshop) => new Date(workshop.fechaInicio) >= today)
+          const future = (result.data || [])
+            .filter((w) => new Date(w.fechaInicio) >= today)
             .sort((a, b) => new Date(a.fechaInicio) - new Date(b.fechaInicio))
-
-          setUpcomingWorkshops(futureWorkshops.slice(0, 3))
+          setUpcomingWorkshops(future.slice(0, 3))
         } else {
-          setError((prev) => ({ ...prev, workshops: result.message }))
+          setUpcomingWorkshops(MOCK_WORKSHOPS.slice(0, 3))
         }
-      } catch (err) {
-        setError((prev) => ({ ...prev, workshops: "Error al cargar los talleres" }))
+      } catch {
+        setUpcomingWorkshops(MOCK_WORKSHOPS.slice(0, 3))
       } finally {
         setLoading((prev) => ({ ...prev, workshops: false }))
       }
@@ -101,10 +87,6 @@ const HomePage = () => {
           <div className="products-preview">
             {loading.products ? (
               <LoadingSpinner />
-            ) : error.products ? (
-              <Message message={error.products} type="error" />
-            ) : featuredProducts.length === 0 ? (
-              <Message message="No hay productos destacados disponibles" type="warning" />
             ) : (
               featuredProducts.map((product) => (
                 <ProductCard key={product.id} product={product} onViewDetails={() => {}} />
@@ -112,9 +94,7 @@ const HomePage = () => {
             )}
           </div>
           <div className="text-center">
-            <a href="/productos" className="btn btn-primary">
-              Ver todos los productos
-            </a>
+            <a href="/productos" className="btn btn-primary">Ver todos los productos</a>
           </div>
         </div>
       </section>
@@ -125,18 +105,14 @@ const HomePage = () => {
           <div className="posts-preview">
             {loading.posts ? (
               <LoadingSpinner />
-            ) : error.posts ? (
-              <Message message={error.posts} type="error" />
-            ) : latestPosts.length === 0 ? (
-              <Message message="No hay publicaciones disponibles" type="warning" />
             ) : (
-              latestPosts.map((post) => <PostCard key={post.id} post={post} onViewDetails={() => {}} />)
+              latestPosts.map((post) => (
+                <PostCard key={post.id} post={post} onViewDetails={() => {}} />
+              ))
             )}
           </div>
           <div className="text-center">
-            <a href="/publicaciones" className="btn btn-secondary">
-              Ver todas las publicaciones
-            </a>
+            <a href="/publicaciones" className="btn btn-secondary">Ver todas las publicaciones</a>
           </div>
         </div>
       </section>
@@ -147,10 +123,6 @@ const HomePage = () => {
           <div className="workshops-preview">
             {loading.workshops ? (
               <LoadingSpinner />
-            ) : error.workshops ? (
-              <Message message={error.workshops} type="error" />
-            ) : upcomingWorkshops.length === 0 ? (
-              <Message message="No hay próximos talleres programados" type="warning" />
             ) : (
               upcomingWorkshops.map((workshop) => (
                 <WorkshopCard key={workshop.id} workshop={workshop} onViewDetails={() => {}} />
@@ -158,9 +130,7 @@ const HomePage = () => {
             )}
           </div>
           <div className="text-center">
-            <a href="/talleres" className="btn btn-primary">
-              Ver todos los talleres
-            </a>
+            <a href="/talleres" className="btn btn-primary">Ver todos los talleres</a>
           </div>
         </div>
       </section>

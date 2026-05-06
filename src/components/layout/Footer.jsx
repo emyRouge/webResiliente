@@ -1,44 +1,68 @@
-import React from "react"
+import { Link } from "react-router-dom"
+import "./Footer.css"
 
 const Footer = () => {
   return (
-    <footer className="bg-gray-800 text-white py-12">
-      <div className="container mx-auto px-4">
-        <div className="footer-content grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-          <div className="footer-logo">
-            <h2 className="text-xl font-bold mb-2">Café Inclusivo</h2>
-            <p className="text-gray-300">
-              Un espacio donde todos son bienvenidos. Café de calidad con propósito social.
+    <footer className="site-footer">
+      <div className="container">
+        <div className="footer-grid">
+          <div className="footer-brand">
+            <div className="footer-logo-wrap">
+              <span className="footer-logo-main">Resiliente</span>
+              <span className="footer-logo-sub">Café Inclusivo</span>
+            </div>
+            <p className="footer-desc">
+              Un espacio donde todos son bienvenidos. Café de especialidad con propósito social.
             </p>
+            <div className="footer-social">
+              <a href="#" className="social-btn" aria-label="Facebook">
+                <i className="fab fa-facebook-f"></i>
+              </a>
+              <a href="#" className="social-btn" aria-label="Instagram">
+                <i className="fab fa-instagram"></i>
+              </a>
+              <a href="#" className="social-btn" aria-label="Twitter/X">
+                <i className="fab fa-twitter"></i>
+              </a>
+            </div>
           </div>
-          
-          <div className="footer-links">
-            <h3 className="text-lg font-semibold mb-4">Enlaces</h3>
-            <ul className="space-y-2">
-              <li><a href="/" className="text-gray-300 hover:text-white">Inicio</a></li>
-              <li><a href="/productos" className="text-gray-300 hover:text-white">Productos</a></li>
-              <li><a href="/publicaciones" className="text-gray-300 hover:text-white">Blog</a></li>
-              <li><a href="/talleres" className="text-gray-300 hover:text-white">Talleres</a></li>
+
+          <div className="footer-col">
+            <h3 className="footer-heading">Navegación</h3>
+            <ul className="footer-links">
+              <li><Link to="/">Inicio</Link></li>
+              <li><Link to="/productos">Productos</Link></li>
+              <li><Link to="/publicaciones">Blog</Link></li>
+              <li><Link to="/talleres">Talleres</Link></li>
             </ul>
           </div>
-          
-          <div className="footer-newsletter">
-            <h3 className="text-lg font-semibold mb-4">Newsletter</h3>
-            <form className="flex flex-col">
-              <input 
-                type="email" 
-                placeholder="Tu email" 
-                className="px-3 py-2 rounded mb-2 text-gray-800"
-              />
-              <button className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-white">
-                Suscribirse
-              </button>
-            </form>
+
+          <div className="footer-col">
+            <h3 className="footer-heading">Contacto</h3>
+            <ul className="footer-contact-list">
+              <li>
+                <i className="fas fa-map-marker-alt"></i>
+                <span>Av. Principal 123, Ciudad</span>
+              </li>
+              <li>
+                <i className="fas fa-phone"></i>
+                <span>+123 456 7890</span>
+              </li>
+              <li>
+                <i className="fas fa-envelope"></i>
+                <span>info@resiliente.com</span>
+              </li>
+              <li>
+                <i className="fas fa-clock"></i>
+                <span>Lun–Vie 8:00–20:00<br />Sáb–Dom 9:00–18:00</span>
+              </li>
+            </ul>
           </div>
         </div>
-        
-        <div className="footer-bottom text-center pt-4 border-t border-gray-600">
-          <p>&copy; 2024 Café Inclusivo. Todos los derechos reservados.</p>
+
+        <div className="footer-bottom">
+          <p>&copy; {new Date().getFullYear()} Café Resiliente. Todos los derechos reservados.</p>
+          <p className="footer-tagline-bottom">Inclusión · Comunidad · Calidad</p>
         </div>
       </div>
     </footer>

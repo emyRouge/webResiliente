@@ -34,6 +34,17 @@ body {
   padding: 0 20px;
 }
 
+/* Sticky footer layout */
+.site-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.site-main {
+  flex: 1 0 auto;
+}
+
 a {
   text-decoration: none;
   color: var(--primary-color);

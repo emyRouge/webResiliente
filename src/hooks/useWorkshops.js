@@ -1,7 +1,6 @@
-"use client"
-
 import { useState, useEffect, useCallback } from "react"
 import { useApi } from "../context/ApiContext"
+import { MOCK_WORKSHOPS } from "../data/mockData"
 
 export const useWorkshops = () => {
   const { getWorkshops, getWorkshop } = useApi()
@@ -15,91 +14,80 @@ export const useWorkshops = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const itemsPerPage = 6
 
-  // Cargar talleres
   const loadWorkshops = useCallback(async () => {
     setLoading(true)
     try {
       const result = await getWorkshops()
       if (result.success) {
-        setWorkshops(result.data || [])
-        setFilteredWorkshops(result.data || [])
-        setTotalPages(Math.ceil((result.data?.length || 0) / itemsPerPage))
+        const data = result.data || []
+        setWorkshops(data)
+        setFilteredWorkshops(data)
+        setTotalPages(Math.ceil(data.length / itemsPerPage))
       } else {
-        setError(result.message)
+        setWorkshops(MOCK_WORKSHOPS)
+        setFilteredWorkshops(MOCK_WORKSHOPS)
+        setTotalPages(Math.ceil(MOCK_WORKSHOPS.length / itemsPerPage))
       }
-    } catch (err) {
-      setError("Error al cargar los talleres")
-      console.error(err)
+    } catch {
+      setWorkshops(MOCK_WORKSHOPS)
+      setFilteredWorkshops(MOCK_WORKSHOPS)
+      setTotalPages(Math.ceil(MOCK_WORKSHOPS.length / itemsPerPage))
     } finally {
       setLoading(false)
     }
   }, [getWorkshops])
 
-  // Cargar un taller específico
-  const loadWorkshopDetails = useCallback(
-    async (id) => {
-      setLoading(true)
-      try {
-        const result = await getWorkshop(id)
-        if (result.success) {
-          setSelectedWorkshop(result.data)
+  const loadWorkshopDetails = useCallback(async (id) => {
+    try {
+      const result = await getWorkshop(id)
+      if (result.success) {
+        setSelectedWorkshop(result.data)
+        setIsModalOpen(true)
+      } else {
+        const mock = MOCK_WORKSHOPS.find((w) => w.id === id)
+        if (mock) {
+          setSelectedWorkshop(mock)
           setIsModalOpen(true)
-        } else {
-          setError(result.message)
         }
-      } catch (err) {
-        setError("Error al cargar el detalle del taller")
-        console.error(err)
-      } finally {
-        setLoading(false)
       }
-    },
-    [getWorkshop],
-  )
-
-  // Filtrar talleres
-  const filterWorkshops = useCallback(
-    ({ month, searchTerm }) => {
-      let filtered = [...workshops]
-
-      // Filtrar por mes
-      if (month) {
-        filtered = filtered.filter((workshop) => {
-          const fechaInicio = new Date(workshop.fechaInicio)
-          const mes = fechaInicio.getMonth() + 1
-          return mes.toString() === month
-        })
+    } catch {
+      const mock = MOCK_WORKSHOPS.find((w) => w.id === id)
+      if (mock) {
+        setSelectedWorkshop(mock)
+        setIsModalOpen(true)
       }
+    }
+  }, [getWorkshop])
 
-      // Filtrar por término de búsqueda
-      if (searchTerm) {
-        const term = searchTerm.toLowerCase()
-        filtered = filtered.filter(
-          (workshop) =>
-            workshop.nombre.toLowerCase().includes(term) || workshop.descripcion.toLowerCase().includes(term),
-        )
-      }
+  const filterWorkshops = useCallback(({ month, searchTerm }) => {
+    let filtered = [...workshops]
 
-      setFilteredWorkshops(filtered)
-      setTotalPages(Math.ceil(filtered.length / itemsPerPage))
-      setCurrentPage(1)
-    },
-    [workshops],
-  )
+    if (month) {
+      filtered = filtered.filter((w) => {
+        const mes = new Date(w.fechaInicio).getMonth() + 1
+        return mes.toString() === month
+      })
+    }
 
-  // Obtener talleres para la página actual
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase()
+      filtered = filtered.filter(
+        (w) => w.nombre.toLowerCase().includes(term) || w.descripcion.toLowerCase().includes(term),
+      )
+    }
+
+    setFilteredWorkshops(filtered)
+    setTotalPages(Math.ceil(filtered.length / itemsPerPage))
+    setCurrentPage(1)
+  }, [workshops])
+
   const getCurrentPageWorkshops = useCallback(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    const endIndex = startIndex + itemsPerPage
-    return filteredWorkshops.slice(startIndex, endIndex)
-  }, [filteredWorkshops, currentPage, itemsPerPage])
+    const start = (currentPage - 1) * itemsPerPage
+    return filteredWorkshops.slice(start, start + itemsPerPage)
+  }, [filteredWorkshops, currentPage])
 
-  // Cambiar de página
-  const changePage = (page) => {
-    setCurrentPage(page)
-  }
+  const changePage = (page) => setCurrentPage(page)
 
-  // Cerrar modal
   const closeModal = () => {
     setIsModalOpen(false)
     setSelectedWorkshop(null)

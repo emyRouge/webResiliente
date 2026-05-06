@@ -1,41 +1,52 @@
 .features {
-  padding: 80px 0;
+  padding: 88px 0;
   background-color: var(--light-bg);
 }
 
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 30px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 28px;
 }
 
 .feature-card {
   background-color: #fff;
-  border-radius: 10px;
-  padding: 30px;
+  border-radius: 16px;
+  padding: 36px 28px;
   text-align: center;
-  box-shadow: var(--shadow);
-  transition: var(--transition);
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .feature-card:hover {
-  transform: translateY(-10px);
+  transform: translateY(-8px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
 }
 
 .feature-icon {
-  width: 70px;
-  height: 70px;
-  background-color: var(--primary-color);
-  color: var(--light-text);
-  border-radius: 50%;
+  width: 72px;
+  height: 72px;
+  background: linear-gradient(135deg, var(--primary-color) 0%, #2a96d4 100%);
+  color: white;
+  border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 20px;
-  font-size: 1.8rem;
+  margin: 0 auto 22px;
+  font-size: 1.7rem;
+  box-shadow: 0 6px 20px rgba(81, 187, 245, 0.35);
 }
 
 .feature-card h3 {
-  margin-bottom: 15px;
-  color: var(--primary-color);
+  margin-bottom: 12px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1a2a3a;
+}
+
+.feature-card p {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: #666;
 }

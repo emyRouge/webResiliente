@@ -2,17 +2,14 @@ import { useApi } from "../../context/ApiContext"
 import "./PostDetail.css"
 
 const PostDetail = ({ post }) => {
-  const { getProxiedFileUrl } = useApi()
+  const { getFileUrl } = useApi()
   const publishDate = new Date(post.fechaPublicacion)
 
-  // Determinar la fuente de la imagen
-  let imageSrc = "https://placehold.co/800x400?text=Blog"
+  let imageSrc = `https://picsum.photos/seed/post-${post.id}/800/400`
   if (post.imagen) {
     if (post.imagen.startsWith("http")) {
-      // Es una URL de Wasabi - usar proxy
-      imageSrc = getProxiedFileUrl(post.imagen)
+      imageSrc = getFileUrl(post.imagen)
     } else {
-      // Es base64 (compatibilidad con datos existentes)
       imageSrc = `data:image/jpeg;base64,${post.imagen}`
     }
   }

@@ -1,21 +1,16 @@
-"use client"
-
 import { useApi } from "../../context/ApiContext"
 import "./WorkshopDetail.css"
 
 const WorkshopDetail = ({ workshop, onRegister }) => {
-  const { getProxiedFileUrl } = useApi()
+  const { getFileUrl } = useApi()
   const startDate = new Date(workshop.fechaInicio)
   const endDate = new Date(workshop.fechaFin)
 
-  // Determinar la fuente de la imagen
-  let imageSrc = "https://placehold.co/600x400?text=Taller"
+  let imageSrc = `https://picsum.photos/seed/workshop-${workshop.id}/600/400`
   if (workshop.imagen) {
     if (workshop.imagen.startsWith("http")) {
-      // Es una URL de Wasabi - usar proxy
-      imageSrc = getProxiedFileUrl(workshop.imagen)
+      imageSrc = getFileUrl(workshop.imagen)
     } else {
-      // Es base64 (compatibilidad con datos existentes)
       imageSrc = `data:image/jpeg;base64,${workshop.imagen}`
     }
   }

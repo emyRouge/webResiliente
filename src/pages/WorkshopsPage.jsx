@@ -1,5 +1,3 @@
-"use client"
-
 import { useRef } from "react"
 import { useWorkshops } from "../hooks/useWorkshops"
 import PageBanner from "../components/ui/PageBanner"
@@ -58,7 +56,7 @@ const WorkshopsPage = () => {
               </p>
             </div>
             <div className="intro-image">
-              <img src="https://placehold.co/500x300" alt="Taller inclusivo en Resiliente" />
+              <img src="https://picsum.photos/seed/resiliente-talleres/500/300" alt="Taller inclusivo en Resiliente" loading="lazy" />
             </div>
           </div>
         </div>

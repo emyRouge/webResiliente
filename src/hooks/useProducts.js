@@ -1,7 +1,6 @@
-"use client"
-
 import { useState, useEffect, useCallback } from "react"
 import { useApi } from "../context/ApiContext"
+import { MOCK_PRODUCTS } from "../data/mockData"
 
 export const useProducts = () => {
   const { getProducts, getProduct } = useApi()
@@ -15,103 +14,91 @@ export const useProducts = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const itemsPerPage = 9
 
-  // Cargar productos
   const loadProducts = useCallback(async () => {
     setLoading(true)
     try {
       const result = await getProducts()
       if (result.success) {
-        setProducts(result.data || [])
-        setFilteredProducts(result.data || [])
-        setTotalPages(Math.ceil((result.data?.length || 0) / itemsPerPage))
+        const data = result.data || []
+        setProducts(data)
+        setFilteredProducts(data)
+        setTotalPages(Math.ceil(data.length / itemsPerPage))
       } else {
-        setError(result.message)
+        setProducts(MOCK_PRODUCTS)
+        setFilteredProducts(MOCK_PRODUCTS)
+        setTotalPages(Math.ceil(MOCK_PRODUCTS.length / itemsPerPage))
       }
-    } catch (err) {
-      setError("Error al cargar los productos")
-      console.error(err)
+    } catch {
+      setProducts(MOCK_PRODUCTS)
+      setFilteredProducts(MOCK_PRODUCTS)
+      setTotalPages(Math.ceil(MOCK_PRODUCTS.length / itemsPerPage))
     } finally {
       setLoading(false)
     }
   }, [getProducts])
 
-  // Cargar un producto específico
-  const loadProductDetails = useCallback(
-    async (id) => {
-      setLoading(true)
-      try {
-        const result = await getProduct(id)
-        if (result.success) {
-          setSelectedProduct(result.data)
+  const loadProductDetails = useCallback(async (id) => {
+    try {
+      const result = await getProduct(id)
+      if (result.success) {
+        setSelectedProduct(result.data)
+        setIsModalOpen(true)
+      } else {
+        const mock = MOCK_PRODUCTS.find((p) => p.id === id)
+        if (mock) {
+          setSelectedProduct(mock)
           setIsModalOpen(true)
-        } else {
-          setError(result.message)
-        }
-      } catch (err) {
-        setError("Error al cargar el detalle del producto")
-        console.error(err)
-      } finally {
-        setLoading(false)
-      }
-    },
-    [getProduct],
-  )
-
-  // Filtrar productos
-  const filterProducts = useCallback(
-    ({ category, priceRange, searchTerm }) => {
-      let filtered = [...products]
-
-      // Filtrar por categoría
-      if (category) {
-        filtered = filtered.filter(
-          (product) => product.categoria && product.categoria.toLowerCase() === category.toLowerCase(),
-        )
-      }
-
-      // Filtrar por rango de precio
-      if (priceRange) {
-        const [min, max] = priceRange.split("-")
-        if (min && max) {
-          filtered = filtered.filter(
-            (product) => product.precio >= Number.parseInt(min) && product.precio <= Number.parseInt(max),
-          )
-        } else if (min) {
-          filtered = filtered.filter((product) => product.precio >= Number.parseInt(min))
         }
       }
-
-      // Filtrar por término de búsqueda
-      if (searchTerm) {
-        const term = searchTerm.toLowerCase()
-        filtered = filtered.filter(
-          (product) =>
-            product.nombre.toLowerCase().includes(term) ||
-            product.descripcion.toLowerCase().includes(term) ||
-            (product.categoria && product.categoria.toLowerCase().includes(term)),
-        )
+    } catch {
+      const mock = MOCK_PRODUCTS.find((p) => p.id === id)
+      if (mock) {
+        setSelectedProduct(mock)
+        setIsModalOpen(true)
       }
+    }
+  }, [getProduct])
 
-      setFilteredProducts(filtered)
-      setTotalPages(Math.ceil(filtered.length / itemsPerPage))
-      setCurrentPage(1)
-    },
-    [products],
-  )
+  const filterProducts = useCallback(({ category, priceRange, searchTerm }) => {
+    let filtered = [...products]
 
-  // Obtener productos para la página actual
+    if (category) {
+      filtered = filtered.filter(
+        (p) => p.categoria && p.categoria.toLowerCase() === category.toLowerCase(),
+      )
+    }
+
+    if (priceRange) {
+      const [min, max] = priceRange.split("-")
+      if (min && max) {
+        filtered = filtered.filter((p) => p.precio >= Number(min) && p.precio <= Number(max))
+      } else if (min) {
+        filtered = filtered.filter((p) => p.precio >= Number(min))
+      }
+    }
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase()
+      filtered = filtered.filter(
+        (p) =>
+          p.nombre.toLowerCase().includes(term) ||
+          p.descripcion.toLowerCase().includes(term) ||
+          (p.categoria && p.categoria.toLowerCase().includes(term)),
+      )
+    }
+
+    setFilteredProducts(filtered)
+    setTotalPages(Math.ceil(filtered.length / itemsPerPage))
+    setCurrentPage(1)
+  }, [products])
+
   const getCurrentPageProducts = useCallback(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    const endIndex = startIndex + itemsPerPage
-    return filteredProducts.slice(startIndex, endIndex)
-  }, [filteredProducts, currentPage, itemsPerPage])
+    const start = (currentPage - 1) * itemsPerPage
+    return filteredProducts.slice(start, start + itemsPerPage)
+  }, [filteredProducts, currentPage])
 
-  // Cambiar de página
-  const changePage = (page) => {
-    setCurrentPage(page)
-  }
+  const changePage = (page) => setCurrentPage(page)
 
-  // Cerrar modal
   const closeModal = () => {
     setIsModalOpen(false)
     setSelectedProduct(null)

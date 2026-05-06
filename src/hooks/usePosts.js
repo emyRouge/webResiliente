@@ -1,7 +1,6 @@
-"use client"
-
 import { useState, useEffect, useCallback } from "react"
 import { useApi } from "../context/ApiContext"
+import { MOCK_POSTS } from "../data/mockData"
 
 export const usePosts = () => {
   const { getPosts, getPost } = useApi()
@@ -16,86 +15,78 @@ export const usePosts = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const itemsPerPage = 5
 
-  // Cargar publicaciones
   const loadPosts = useCallback(async () => {
     setLoading(true)
     try {
       const result = await getPosts()
       if (result.success) {
-        // Ordenar por fecha (más recientes primero)
-        const sortedPosts = (result.data || []).sort(
+        const sorted = (result.data || []).sort(
           (a, b) => new Date(b.fechaPublicacion) - new Date(a.fechaPublicacion),
         )
-
-        setPosts(sortedPosts)
-        setFilteredPosts(sortedPosts)
-        setRecentPosts(sortedPosts.slice(0, 5))
-        setTotalPages(Math.ceil(sortedPosts.length / itemsPerPage))
+        setPosts(sorted)
+        setFilteredPosts(sorted)
+        setRecentPosts(sorted.slice(0, 5))
+        setTotalPages(Math.ceil(sorted.length / itemsPerPage))
       } else {
-        setError(result.message)
+        setPosts(MOCK_POSTS)
+        setFilteredPosts(MOCK_POSTS)
+        setRecentPosts(MOCK_POSTS.slice(0, 5))
+        setTotalPages(Math.ceil(MOCK_POSTS.length / itemsPerPage))
       }
-    } catch (err) {
-      setError("Error al cargar las publicaciones")
-      console.error(err)
+    } catch {
+      setPosts(MOCK_POSTS)
+      setFilteredPosts(MOCK_POSTS)
+      setRecentPosts(MOCK_POSTS.slice(0, 5))
+      setTotalPages(Math.ceil(MOCK_POSTS.length / itemsPerPage))
     } finally {
       setLoading(false)
     }
   }, [getPosts])
 
-  // Cargar una publicación específica
-  const loadPostDetails = useCallback(
-    async (id) => {
-      setLoading(true)
-      try {
-        const result = await getPost(id)
-        if (result.success) {
-          setSelectedPost(result.data)
-          setIsModalOpen(true)
-        } else {
-          setError(result.message)
-        }
-      } catch (err) {
-        setError("Error al cargar el detalle de la publicación")
-        console.error(err)
-      } finally {
-        setLoading(false)
-      }
-    },
-    [getPost],
-  )
-
-  // Buscar publicaciones
-  const searchPosts = useCallback(
-    (searchTerm) => {
-      if (!searchTerm.trim()) {
-        setFilteredPosts(posts)
+  const loadPostDetails = useCallback(async (id) => {
+    try {
+      const result = await getPost(id)
+      if (result.success) {
+        setSelectedPost(result.data)
+        setIsModalOpen(true)
       } else {
-        const term = searchTerm.toLowerCase()
-        const filtered = posts.filter(
-          (post) => post.titulo.toLowerCase().includes(term) || post.contenido.toLowerCase().includes(term),
-        )
-        setFilteredPosts(filtered)
+        const mock = MOCK_POSTS.find((p) => p.id === id)
+        if (mock) {
+          setSelectedPost(mock)
+          setIsModalOpen(true)
+        }
       }
+    } catch {
+      const mock = MOCK_POSTS.find((p) => p.id === id)
+      if (mock) {
+        setSelectedPost(mock)
+        setIsModalOpen(true)
+      }
+    }
+  }, [getPost])
 
-      setCurrentPage(1)
-      setTotalPages(Math.ceil(filteredPosts.length / itemsPerPage))
-    },
-    [posts],
-  )
+  const searchPosts = useCallback((searchTerm) => {
+    if (!searchTerm.trim()) {
+      setFilteredPosts(posts)
+      setTotalPages(Math.ceil(posts.length / itemsPerPage))
+    } else {
+      const term = searchTerm.toLowerCase()
+      const filtered = posts.filter(
+        (p) => p.titulo.toLowerCase().includes(term) || p.contenido.toLowerCase().includes(term),
+      )
+      setFilteredPosts(filtered)
+      setTotalPages(Math.ceil(filtered.length / itemsPerPage))
+    }
+    setCurrentPage(1)
+  }, [posts])
 
-  // Obtener publicaciones para la página actual
   const getCurrentPagePosts = useCallback(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    const endIndex = startIndex + itemsPerPage
-    return filteredPosts.slice(startIndex, endIndex)
-  }, [filteredPosts, currentPage, itemsPerPage])
+    const start = (currentPage - 1) * itemsPerPage
+    return filteredPosts.slice(start, start + itemsPerPage)
+  }, [filteredPosts, currentPage])
 
-  // Cambiar de página
-  const changePage = (page) => {
-    setCurrentPage(page)
-  }
+  const changePage = (page) => setCurrentPage(page)
 
-  // Cerrar modal
   const closeModal = () => {
     setIsModalOpen(false)
     setSelectedPost(null)

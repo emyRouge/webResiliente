@@ -1,21 +1,16 @@
-"use client"
-
 import { useState } from "react"
 import { useApi } from "../../context/ApiContext"
 import "./ProductDetail.css"
 
 const ProductDetail = ({ product }) => {
   const [quantity, setQuantity] = useState(1)
-  const { getProxiedFileUrl } = useApi()
+  const { getFileUrl } = useApi()
 
-  // Determinar la fuente de la imagen
-  let imageSrc = "https://placehold.co/600x400?text=Producto"
+  let imageSrc = `https://picsum.photos/seed/product-${product.id}/600/400`
   if (product.imagen) {
     if (product.imagen.startsWith("http")) {
-      // Es una URL de Wasabi - usar proxy
-      imageSrc = getProxiedFileUrl(product.imagen)
+      imageSrc = getFileUrl(product.imagen)
     } else {
-      // Es base64 (compatibilidad con datos existentes)
       imageSrc = `data:image/jpeg;base64,${product.imagen}`
     }
   }
